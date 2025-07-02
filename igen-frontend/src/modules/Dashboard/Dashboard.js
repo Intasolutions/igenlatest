@@ -14,7 +14,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div>
+    <div className='p-10'>
       <h1>Dashboard</h1>
       {stats ? (
         <pre>{JSON.stringify(stats, null, 2)}</pre>

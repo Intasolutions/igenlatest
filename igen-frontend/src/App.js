@@ -9,80 +9,79 @@ import TransactionManagement from './modules/Transactions/TransactionManagement'
 import Dashboard from './modules/Dashboard/Dashboard';
 import ProjectManagement from './modules/Projects/ProjectManagement'; // ✅ Import the Projects module
 import ProtectedRoute from './routes/ProtectedRoute';
-import NavBar from './components/NavBar';
+import Sidebar from './components/Slidebar';
+
 
 function AppContent() {
   const location = useLocation();
   const hideNavOnLogin = location.pathname === '/';
 
   return (
-    <>
-      {!hideNavOnLogin && <NavBar />}
+    <div style={{ display: 'flex' }}>
+      {!hideNavOnLogin && <Sidebar />}
 
-      <Routes>
-        {/* Login page */}
-        <Route path="/" element={<Login />} />
+      <div style={{
+        flexGrow: 1,
+  
+backgroundColor: '#F4F7FE!important',
 
-        {/* Dashboard */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']}>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
+        minHeight: '100vh',
+      }}>
+        <Routes>
+          <Route path="/" element={<Login />} />
 
-        {/* Users */}
-        <Route path="/users" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']}>
-            <UserManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
 
-        {/* Companies */}
-        <Route path="/companies" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <CompanyManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/users" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <UserManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* Banks */}
-        <Route path="/banks" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <BankManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/companies" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <CompanyManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* Cost Centres */}
-        <Route path="/cost-centres" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <CostCentreManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/banks" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <BankManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* Transaction Types */}
-        <Route path="/transaction-types" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <TransactionTypeManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/cost-centres" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <CostCentreManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* Transactions */}
-        <Route path="/transactions" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <TransactionManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/transaction-types" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <TransactionTypeManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* ✅ Projects */}
-        <Route path="/projects" element={
-          <ProtectedRoute allowedRoles={['SUPER_USER']} >
-            <ProjectManagement />
-          </ProtectedRoute>
-        } />
+          <Route path="/transactions" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <TransactionManagement />
+            </ProtectedRoute>
+          } />
 
-        {/* Fallback to redirect unknown routes */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </>
+          <Route path="/projects" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <ProjectManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
   );
 }
 
