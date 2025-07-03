@@ -24,6 +24,9 @@ INSTALLED_APPS = [
     'transactions',
     'projects',
     'properties',
+    'entities',
+    "receipts",
+    'assets',
 ]
 
 AUTH_USER_MODEL = 'users.User'

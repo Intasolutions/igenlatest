@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+
 import Login from './modules/Auth/Login';
 import UserManagement from './modules/Users/UserManagement';
 import CompanyManagement from './modules/Companies/CompanyManagement';
@@ -7,10 +8,14 @@ import CostCentreManagement from './modules/CostCentres/CostCentreManagement';
 import TransactionTypeManagement from './modules/TransactionTypes/TransactionTypeManagement';
 import TransactionManagement from './modules/Transactions/TransactionManagement';
 import Dashboard from './modules/Dashboard/Dashboard';
-import ProjectManagement from './modules/Projects/ProjectManagement'; // ✅ Import the Projects module
+import ProjectManagement from './modules/Projects/ProjectManagement';
+import PropertyManagement from './modules/Properties/PropertyManagement';
+import EntityManagement from './modules/Entities/EntityManagement';
+import ReceiptManagement from './modules/Receipts/ReceiptManagement';
+import AssetManagement from './modules/Assets/AssetManagement';
+
 import ProtectedRoute from './routes/ProtectedRoute';
 import Sidebar from './components/Slidebar';
-
 
 function AppContent() {
   const location = useLocation();
@@ -22,9 +27,7 @@ function AppContent() {
 
       <div style={{
         flexGrow: 1,
-  
-backgroundColor: '#F4F7FE!important',
-
+        backgroundColor: '#F4F7FE',
         minHeight: '100vh',
       }}>
         <Routes>
@@ -75,6 +78,30 @@ backgroundColor: '#F4F7FE!important',
           <Route path="/projects" element={
             <ProtectedRoute allowedRoles={['SUPER_USER']}>
               <ProjectManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/properties" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <PropertyManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/entities" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <EntityManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/receipts" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <ReceiptManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/assets" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
+              <AssetManagement />
             </ProtectedRoute>
           } />
 

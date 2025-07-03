@@ -18,6 +18,10 @@ import {
   Logout,
   Assignment,
   Menu as MenuIcon,
+  Apartment,         // 🏢 for Properties
+  BusinessCenter,    // 🏬 for Entities
+  Receipt,           // 🧾 for Receipts
+  Inventory,         // 📦 for Assets
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -30,6 +34,10 @@ const menuItems = [
   { text: 'Transaction Types', icon: <ReceiptLong />, path: '/transaction-types' },
   { text: 'Transactions', icon: <Assignment />, path: '/transactions' },
   { text: 'Projects', icon: <Assignment />, path: '/projects' },
+  { text: 'Properties', icon: <Apartment />, path: '/properties' },         // ✅ Added
+  { text: 'Entities', icon: <BusinessCenter />, path: '/entities' },        // ✅ Added
+  { text: 'Receipts', icon: <Receipt />, path: '/receipts' },               // ✅ Added
+  { text: 'Assets', icon: <Inventory />, path: '/assets' },                 // ✅ Added
 ];
 
 export default function Sidebar() {
@@ -51,15 +59,13 @@ export default function Sidebar() {
         '& .MuiDrawer-paper': {
           width: open ? 220 : 72,
           boxSizing: 'border-box',
-backgroundColor:'#003B99 ',
-
+          backgroundColor: '#003B99',
           color: '#fff',
           borderRight: '1px solid rgba(255,255,255,0.1)',
           boxShadow: '2px 0 10px rgba(0,0,0,0.15)',
           transition: 'width 0.3s ease',
-          overflow:'hidden',
-          paddingRight:'18px',
-          
+          overflow: 'hidden',
+          paddingRight: '18px',
         },
       }}
     >
@@ -92,7 +98,6 @@ backgroundColor:'#003B99 ',
                   transform: 'scale(1.03)',
                 },
                 transition: 'all 0.25s ease-in-out',
-               
               }}
             >
               <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}>

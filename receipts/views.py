@@ -1,0 +1,9 @@
+from rest_framework import viewsets
+from .models import Receipt
+from .serializers import ReceiptSerializer
+from users.permissions import IsSuperUser  # reuse your existing permission
+
+class ReceiptViewSet(viewsets.ModelViewSet):
+    queryset = Receipt.objects.all().order_by('-date')
+    serializer_class = ReceiptSerializer
+    permission_classes = [IsSuperUser]
