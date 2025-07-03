@@ -1,27 +1,32 @@
 // src/modules/Assets/AssetManagement.js
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   Button,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
   Typography,
-  Dialog,
 } from '@mui/material';
 import AddAssetDialog from './AddAssetDialog';
-import axios from 'axios';
 
 export default function AssetManagement() {
   const [assets, setAssets] = useState([]);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const fetchAssets = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/assets/`);
+      const token = localStorage.getItem('access');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/api/assets/`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setAssets(response.data);
     } catch (error) {
       console.error('Failed to fetch assets:', error);
@@ -32,30 +37,39 @@ export default function AssetManagement() {
     fetchAssets();
   }, []);
 
+  const handleAddSuccess = () => {
+    setOpen(false);
+    fetchAssets(); // Refresh assets after adding
+  };
+
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 20 }}>
       <Typography variant="h5" gutterBottom>
         Asset Management
       </Typography>
+
       <Button
         variant="contained"
-        onClick={() => setAddDialogOpen(true)}
-        style={{ marginBottom: '16px' }}
+        color="primary"
+        onClick={() => setOpen(true)}
+        sx={{ mb: 2 }}
       >
-        ADD ASSET
+        Add Asset
       </Button>
+
+      <AddAssetDialog open={open} onClose={() => setOpen(false)} onSuccess={handleAddSuccess} />
 
       <TableContainer component={Paper}>
         <Table>
-          <TableHead>
-            <TableRow style={{ backgroundColor: '#003B99' }}>
-              <TableCell style={{ color: '#fff' }}>ID</TableCell>
-              <TableCell style={{ color: '#fff' }}>Name</TableCell>
-              <TableCell style={{ color: '#fff' }}>Category</TableCell>
-              <TableCell style={{ color: '#fff' }}>Location</TableCell>
-              <TableCell style={{ color: '#fff' }}>Purchase Date</TableCell>
-              <TableCell style={{ color: '#fff' }}>Maintenance Frequency</TableCell>
-              <TableCell style={{ color: '#fff' }}>Actions</TableCell>
+          <TableHead sx={{ backgroundColor: '#003B99' }}>
+            <TableRow>
+              <TableCell sx={{ color: '#fff' }}>ID</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Name</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Category</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Location</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Purchase Date</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Maintenance Frequency</TableCell>
+              <TableCell sx={{ color: '#fff' }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -68,7 +82,7 @@ export default function AssetManagement() {
                   <TableCell>{asset.location}</TableCell>
                   <TableCell>{asset.purchase_date}</TableCell>
                   <TableCell>{asset.maintenance_frequency}</TableCell>
-                  <TableCell> {/* Add edit/delete actions here if needed */}</TableCell>
+                  <TableCell>Coming soon</TableCell>
                 </TableRow>
               ))
             ) : (
@@ -81,11 +95,6 @@ export default function AssetManagement() {
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* Add Asset Dialog */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-        <AddAssetDialog onClose={() => { setAddDialogOpen(false); fetchAssets(); }} />
-      </Dialog>
     </div>
   );
 }
