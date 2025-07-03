@@ -18,10 +18,10 @@ import {
   Logout,
   Assignment,
   Menu as MenuIcon,
-  Apartment,         // 🏢 for Properties
-  BusinessCenter,    // 🏬 for Entities
-  Receipt,           // 🧾 for Receipts
-  Inventory,         // 📦 for Assets
+  Apartment,
+  BusinessCenter,
+  Receipt,
+  Inventory,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -34,10 +34,10 @@ const menuItems = [
   { text: 'Transaction Types', icon: <ReceiptLong />, path: '/transaction-types' },
   { text: 'Transactions', icon: <Assignment />, path: '/transactions' },
   { text: 'Projects', icon: <Assignment />, path: '/projects' },
-  { text: 'Properties', icon: <Apartment />, path: '/properties' },         // ✅ Added
-  { text: 'Entities', icon: <BusinessCenter />, path: '/entities' },        // ✅ Added
-  { text: 'Receipts', icon: <Receipt />, path: '/receipts' },               // ✅ Added
-  { text: 'Assets', icon: <Inventory />, path: '/assets' },                 // ✅ Added
+  { text: 'Properties', icon: <Apartment />, path: '/properties' },
+  { text: 'Entities', icon: <BusinessCenter />, path: '/entities' },
+  { text: 'Receipts', icon: <Receipt />, path: '/receipts' },
+  { text: 'Assets', icon: <Inventory />, path: '/assets' },
 ];
 
 export default function Sidebar() {
@@ -52,23 +52,33 @@ export default function Sidebar() {
 
   return (
     <Drawer
-      variant="permanent"
-      sx={{
-        width: open ? 220 : 72,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: open ? 220 : 72,
-          boxSizing: 'border-box',
-          backgroundColor: '#003B99',
-          color: '#fff',
-          borderRight: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '2px 0 10px rgba(0,0,0,0.15)',
-          transition: 'width 0.3s ease',
-          overflow: 'hidden',
-          paddingRight: '18px',
-        },
-      }}
-    >
+  variant="permanent"
+  sx={{
+    width: open ? 220 : 72,
+    flexShrink: 0,
+    '& .MuiDrawer-paper': {
+      width: open ? 220 : 72,
+      boxSizing: 'border-box',
+      backgroundColor: '#1F2937',
+      color: '#FFFFFF',
+      borderRight: '1px solid rgba(255,255,255,0.1)',
+      boxShadow: '2px 0 10px rgba(0,0,0,0.15)',
+      transition: 'width 0.3s ease',
+      paddingRight: '18px',
+
+      // ✅ Enable vertical scroll and hide scrollbar
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      scrollbarWidth: 'none', // Firefox
+      '&::-webkit-scrollbar': {
+        display: 'none', // Chrome, Safari
+      },
+      display: 'flex',
+      flexDirection: 'column',
+    },
+  }}
+>
+
       {/* Logo / Toggle */}
       <div style={{ display: 'flex', alignItems: 'center', padding: 12 }}>
         <IconButton onClick={() => setOpen(!open)} sx={{ color: '#fff' }}>
@@ -91,10 +101,10 @@ export default function Sidebar() {
                 paddingY: '8px',
                 backgroundColor:
                   location.pathname === item.path
-                    ? 'rgba(255, 255, 255, 0.15)'
+                    ? '#3B82F6'
                     : 'transparent',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: '#3B82F6',
                   transform: 'scale(1.03)',
                 },
                 transition: 'all 0.25s ease-in-out',
@@ -123,13 +133,13 @@ export default function Sidebar() {
             borderRadius: '12px',
             paddingY: '8px',
             '&:hover': {
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              backgroundColor: '#3B82F6',
               transform: 'scale(1.02)',
             },
             transition: 'all 0.25s ease-in-out',
           }}
         >
-          <ListItemIcon sx={{ color: '#fff', minWidth: 40 }}>
+          <ListItemIcon sx={{ color: '#ffff', minWidth: 40 }}>
             <Logout />
           </ListItemIcon>
           {open && <ListItemText primary="Logout" />}

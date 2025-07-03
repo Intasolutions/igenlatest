@@ -27,7 +27,7 @@ function AppContent() {
 
       <div style={{
         flexGrow: 1,
-        backgroundColor: '#F4F7FE',
+        backgroundColor: '	#F9FAFB',
         minHeight: '100vh',
       }}>
         <Routes>

@@ -6,7 +6,7 @@ import {
   Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, FormControl, InputLabel, Select, Checkbox,
   ListItemText, Typography, Paper, Chip, Avatar, IconButton, Tooltip,
-  Snackbar
+  Snackbar, Alert
 } from '@mui/material';
 
 import EditIcon from '@mui/icons-material/Edit';
@@ -16,7 +16,6 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import InputAdornment from '@mui/material/InputAdornment';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import MuiAlert from '@mui/material/Alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Stack } from '@mui/material';
 
@@ -44,6 +43,7 @@ export default function UserManagement() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetUserId, setResetUserId] = useState(null);
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -88,10 +88,19 @@ export default function UserManagement() {
   }, []);
 
   const handleAddUser = async () => {
-    if (!form.user_id || !form.password || !form.full_name || form.company_ids.length === 0) {
+    const { user_id, password, full_name, company_ids } = form;
+
+    if (!user_id || !password || !full_name || company_ids.length === 0) {
       showSnackbar('Please fill in all required fields', 'error');
       return;
     }
+
+    const passwordIsValid = password.length >= 6 && /(?=.*[A-Za-z])(?=.*\d)/.test(password);
+    if (!passwordIsValid) {
+      showSnackbar('Password must be at least 6 characters and contain both letters and numbers', 'error');
+      return;
+    }
+
     try {
       await API.post('users/', form);
       showSnackbar('User added successfully!', 'success');
@@ -144,6 +153,7 @@ export default function UserManagement() {
   const openResetDialog = (id) => {
     setResetUserId(id);
     setNewPassword('');
+    setConfirmPassword('');
     setResetDialogOpen(true);
   };
 
@@ -153,27 +163,42 @@ export default function UserManagement() {
       return;
     }
     try {
-      await API.post(`users/${resetUserId}/reset_password/`, { new_password: newPassword });
+      await API.post(`users/${resetUserId}/reset-password/`, {
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
       showSnackbar('Password reset successfully!', 'success');
       setResetDialogOpen(false);
     } catch (err) {
       console.error('Reset error:', err.response?.data);
-      showSnackbar('Failed to reset password', 'error');
+      showSnackbar('Failed to reset password: ' + (err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Unknown error'), 'error');
     }
   };
 
   return (
-    <div style={{ padding: 40, backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+    <div style={{ padding: 30, backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
        <div style={{ padding: 40, backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
       <Typography variant="h5" gutterBottom>User Management</Typography>
-    <Button
+<Button
   variant="contained"
   startIcon={<PersonAddIcon />}
-  onClick={() => setOpen(true)}
+  onClick={() => {
+    // ⬅️ CLEAR form before showing Add User dialog
+    setForm({
+      user_id: '',
+      full_name: '',
+      role: 'ACCOUNTANT',
+      password: '',
+      company_ids: [],
+    });
+    setOpen(true);
+    setEditOpen(false); // just to be safe
+  }}
   sx={{ borderRadius: 2, px: 3, py: 1.5, fontSize:13 }}
 >
   Add User
 </Button>
+
 
 
       <Paper elevation={1} style={{ marginTop: 20, padding: 16 }}>
@@ -257,90 +282,156 @@ export default function UserManagement() {
       </Paper>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={open || editOpen} onClose={() => { setOpen(false); setEditOpen(false); }} fullWidth maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 4, p: 2 } }}>
-        <DialogTitle sx={{ fontSize: 20, fontWeight: 600, pb: 0 }}>
-          {open ? 'Add New User' : 'Edit User'}
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Stack spacing={3}>
-            {open && (
-              <TextField label="User ID" variant="outlined" fullWidth
-                value={form.user_id}
-                onChange={(e) => setForm({ ...form, user_id: e.target.value })}
-                helperText="Unique ID for logging in"
-              />
-            )}
-            <TextField label="Full Name" variant="outlined" fullWidth
-              value={open ? form.full_name : editForm.full_name}
-              onChange={(e) =>
-                open
-                  ? setForm({ ...form, full_name: e.target.value })
-                  : setEditForm({ ...editForm, full_name: e.target.value })
+     <Dialog open={open || editOpen} onClose={() => { setOpen(false); setEditOpen(false); }} fullWidth maxWidth="sm"
+  PaperProps={{ sx: { borderRadius: 4, p: 2 } }}>
+  <DialogTitle sx={{ fontSize: 20, fontWeight: 600, pb: 0 }}>
+    {open ? 'Add New User' : 'Edit User'}
+  </DialogTitle>
+
+  <DialogContent sx={{ pt: 2 }}>
+    <Stack spacing={3}>
+      {open && (
+        <>
+          <TextField
+            label="User ID"
+            variant="outlined"
+            fullWidth
+            value={form.user_id}
+            onChange={(e) => setForm({ ...form, user_id: e.target.value })}
+            helperText="Unique ID for logging in"
+          />
+
+          <TextField
+            label="Full Name"
+            variant="outlined"
+            fullWidth
+            value={form.full_name}
+            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+          />
+
+          <TextField
+            label="Password"
+            type="password"
+            variant="outlined"
+            fullWidth
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            helperText="At least 6 characters, including letters and numbers"
+          />
+
+          {/* Role Select */}
+          <FormControl fullWidth>
+            <InputLabel>Role</InputLabel>
+            <Select
+              label="Role"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+            >
+              {roleOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Companies Multi Select */}
+          <FormControl fullWidth>
+            <InputLabel>Companies</InputLabel>
+            <Select
+              label="Companies"
+              multiple
+              value={form.company_ids}
+              onChange={(e) => setForm({ ...form, company_ids: e.target.value })}
+              renderValue={(selected) =>
+                companies
+                  .filter((c) => selected.includes(c.id))
+                  .map((c) => c.name)
+                  .join(', ')
               }
-              helperText="The name that will be displayed"
-            />
-            {open && (
-              <TextField label="Password" type="password" variant="outlined" fullWidth
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                helperText="Initial password for the user"
-              />
-            )}
-            <FormControl fullWidth>
-              <InputLabel>Role</InputLabel>
-              <Select label="Role"
-                value={open ? form.role : editForm.role}
-                onChange={(e) =>
-                  open
-                    ? setForm({ ...form, role: e.target.value })
-                    : setEditForm({ ...editForm, role: e.target.value })
-                }>
-                {roleOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth>
-              <InputLabel>Companies</InputLabel>
-              <Select label="Companies" multiple
-                value={open ? form.company_ids : editForm.company_ids}
-                onChange={(e) =>
-                  open
-                    ? setForm({ ...form, company_ids: e.target.value })
-                    : setEditForm({ ...editForm, company_ids: e.target.value })
-                }
-                renderValue={(selected) =>
-                  companies
-                    .filter((c) => selected.includes(c.id))
-                    .map((c) => c.name)
-                    .join(', ')
-                }>
-                {companies.map((company) => (
-                  <MenuItem key={company.id} value={company.id}>
-                    <Checkbox checked={(open ? form.company_ids : editForm.company_ids).includes(company.id)} />
-                    <ListItemText primary={company.name} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2, pt: 1 }}>
-          <Button variant="outlined" onClick={() => { setOpen(false); setEditOpen(false); }}>
-            Cancel
-          </Button>
-          <Button variant="contained" color="primary" onClick={open ? handleAddUser : handleEditUser}>
-            {open ? 'Add' : 'Done'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+            >
+              {companies.map((company) => (
+                <MenuItem key={company.id} value={company.id}>
+                  <Checkbox checked={form.company_ids.includes(company.id)} />
+                  <ListItemText primary={company.name} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </>
+      )}
+
+      {editOpen && (
+        <>
+          <TextField
+            label="Full Name"
+            variant="outlined"
+            fullWidth
+            value={editForm.full_name}
+            onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+          />
+
+          <FormControl fullWidth>
+            <InputLabel>Role</InputLabel>
+            <Select
+              label="Role"
+              value={editForm.role}
+              onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+            >
+              {roleOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel>Companies</InputLabel>
+            <Select
+              label="Companies"
+              multiple
+              value={editForm.company_ids}
+              onChange={(e) => setEditForm({ ...editForm, company_ids: e.target.value })}
+              renderValue={(selected) =>
+                companies
+                  .filter((c) => selected.includes(c.id))
+                  .map((c) => c.name)
+                  .join(', ')
+              }
+            >
+              {companies.map((company) => (
+                <MenuItem key={company.id} value={company.id}>
+                  <Checkbox checked={editForm.company_ids.includes(company.id)} />
+                  <ListItemText primary={company.name} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </>
+      )}
+    </Stack>
+  </DialogContent>
+
+  <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2, pt: 1 }}>
+    <Button variant="outlined" onClick={() => { setOpen(false); setEditOpen(false); }}>
+      Cancel
+    </Button>
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={open ? handleAddUser : handleEditUser}
+    >
+      {open ? 'Add' : 'Done'}
+    </Button>
+  </DialogActions>
+</Dialog>
+
 
       {/* Reset Password Dialog */}
-    <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)} maxWidth="xs" fullWidth
+<Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)} maxWidth="xs" fullWidth
   PaperProps={{ sx: { borderRadius: 4, p: 2 } }}>
+
   <DialogTitle sx={{ fontWeight: 600, fontSize: 18 }}>
     Reset Password
   </DialogTitle>
@@ -357,19 +448,31 @@ export default function UserManagement() {
       InputProps={{
         endAdornment: (
           <InputAdornment position="end">
-            <IconButton
-              onClick={() => setShowPassword(!showPassword)}
-              edge="end"
-            >
+            <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
               {showPassword ? <VisibilityOff /> : <Visibility />}
             </IconButton>
           </InputAdornment>
         )
       }}
-      helperText="At least 6 characters with letters or numbers"
+      helperText="At least 6 characters with letters and numbers"
     />
 
-    {/* Password strength indicator */}
+    <TextField
+      label="Confirm Password"
+      type={showPassword ? 'text' : 'password'}
+      fullWidth
+      variant="outlined"
+      value={confirmPassword}
+      onChange={(e) => setConfirmPassword(e.target.value)}
+      sx={{ mt: 2 }}
+      error={confirmPassword && newPassword !== confirmPassword}
+      helperText={
+        confirmPassword && newPassword !== confirmPassword
+          ? 'Passwords do not match'
+          : 'Re-enter the password to confirm'
+      }
+    />
+
     {newPassword.length > 0 && (
       <div style={{ marginTop: 10 }}>
         <div
@@ -397,15 +500,22 @@ export default function UserManagement() {
   </DialogContent>
 
   <DialogActions sx={{ px: 3, pb: 2 }}>
-    <Button onClick={() => setResetDialogOpen(false)} variant="outlined">
-      Cancel
-    </Button>
+    <Button onClick={() => {
+  setResetDialogOpen(false);
+  setNewPassword('');
+  setConfirmPassword('');
+}} variant="outlined">
+  Cancel
+</Button>
+
     <Button
       onClick={handlePasswordReset}
       variant="contained"
       color="primary"
       disabled={
-        newPassword.length < 6 || !/(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)
+        newPassword.length < 6 ||
+        !/(?=.*[A-Za-z])(?=.*\d)/.test(newPassword) ||
+        confirmPassword !== newPassword
       }
     >
       Reset
@@ -413,22 +523,22 @@ export default function UserManagement() {
   </DialogActions>
 </Dialog>
 
+
     </div>
-      <Snackbar
+     <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <MuiAlert
+        <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          elevation={6}
           variant="filled"
-          sx={{ width: '100%' }}
+          sx={{ width: '100%', backgroundColor: snackbar.severity === 'success' ? '#4caf50' : snackbar.severity === 'error' ? '#f44336' : '#2196f3' }}
         >
           {snackbar.message}
-        </MuiAlert>
+        </Alert>
       </Snackbar>
     </div>
   );
