@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import {
-  Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem
+  Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Card, CardContent, Typography, IconButton,
+  Snackbar, Alert, Tooltip, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TablePagination
 } from '@mui/material';
+import { Edit, Delete } from '@mui/icons-material';
 
 export default function CostCentreManagement() {
-  const [costCentres, setCostCentres] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [costCentres, setCostCentres] = useState([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const [form, setForm] = useState({
     company: '',
@@ -17,19 +22,33 @@ export default function CostCentreManagement() {
     description: '',
   });
 
-  const [editForm, setEditForm] = useState({
-    id: '',
-    name: '',
-    code: '',
-    description: '',
-  });
+const [editForm, setEditForm] = useState({
+  id: '',
+  company: '',
+  name: '',
+  code: '',
+  description: '',
+});
+
+
+  const [formErrors, setFormErrors] = useState({});
+  const [editFormErrors, setEditFormErrors] = useState({});
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const fetchCostCentres = async () => {
     try {
       const res = await API.get('cost-centres/');
       setCostCentres(res.data);
     } catch (err) {
-      alert('Error fetching cost centres');
+      setSnackbar({ open: true, message: 'Error fetching cost centres', severity: 'error' });
     }
   };
 
@@ -38,7 +57,7 @@ export default function CostCentreManagement() {
       const res = await API.get('companies/');
       setCompanies(res.data);
     } catch (err) {
-      alert('Error fetching companies');
+      setSnackbar({ open: true, message: 'Error fetching companies', severity: 'error' });
     }
   };
 
@@ -47,154 +66,230 @@ export default function CostCentreManagement() {
     fetchCompanies();
   }, []);
 
+  const validateForm = (data, isEdit = false) => {
+  const errors = {};
+  if (!isEdit && !data.company) errors.company = 'Company is required';
+  if (!data.name) errors.name = 'Name is required';
+  else if (!/^[A-Za-z][A-Za-z0-9 ]*$/.test(data.name)) errors.name = 'Name must start with a letter and contain no special characters';
+  if (!data.code) errors.code = 'Code is required';
+  else if (!/^\d+$/.test(data.code)) errors.code = 'Code must be numeric';
+  return errors;
+};
+
+
   const handleAddCostCentre = async () => {
-    if (!form.company || !form.name || !form.code) {
-      alert('Company, Name, and Code are required');
+    const errors = validateForm(form);
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
     try {
       await API.post('cost-centres/', form);
-      alert('Cost Centre added');
+      setSnackbar({ open: true, message: 'Cost Centre added successfully!', severity: 'success' });
       fetchCostCentres();
       setOpen(false);
       setForm({ company: '', name: '', code: '', description: '' });
+      setFormErrors({});
     } catch (err) {
-      alert('Failed to add cost centre');
+      setSnackbar({ open: true, message: 'Failed to add cost centre', severity: 'error' });
     }
   };
 
-  const openEditModal = (costCentre) => {
-    setEditForm({
-      id: costCentre.id,
-      name: costCentre.name,
-      code: costCentre.code,
-      description: costCentre.description,
-    });
-    setEditOpen(true);
+  const handleRealTimeValidation = (field, value, setForm, form, setErrors) => {
+    const updatedForm = { ...form, [field]: value };
+    setForm(updatedForm);
+    const errors = validateForm(updatedForm);
+    setErrors(errors);
   };
 
+const openEditModal = (costCentre) => {
+  setEditForm({
+    id: costCentre.id,
+    company: costCentre.company, // or costCentre.company_id depending on your API
+    name: costCentre.name,
+    code: costCentre.code,
+    description: costCentre.description,
+  });
+  setEditFormErrors({});
+  setEditOpen(true);
+};
+
   const handleEditCostCentre = async () => {
-    if (!editForm.name || !editForm.code) {
-      alert('Name and Code are required');
+   const errors = validateForm(editForm, true);
+
+    if (Object.keys(errors).length > 0) {
+      setEditFormErrors(errors);
       return;
     }
     try {
-      await API.put(`cost-centres/${editForm.id}/`, {
-        name: editForm.name,
-        code: editForm.code,
-        description: editForm.description,
-      });
-      alert('Cost Centre updated');
+      await API.put(`cost-centres/${editForm.id}/`, editForm);
+      setSnackbar({ open: true, message: 'Cost Centre updated successfully!', severity: 'success' });
       fetchCostCentres();
       setEditOpen(false);
     } catch (err) {
-      alert('Failed to update cost centre');
+      setSnackbar({ open: true, message: 'Failed to update cost centre', severity: 'error' });
     }
   };
 
   const deleteCostCentre = async (id) => {
     try {
       await API.delete(`cost-centres/${id}/`);
-      alert('Cost Centre deleted');
+      setSnackbar({ open: true, message: 'Cost Centre deleted successfully!', severity: 'success' });
       fetchCostCentres();
     } catch (err) {
-      alert('Delete failed');
+      setSnackbar({ open: true, message: 'Delete failed', severity: 'error' });
     }
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Cost Centre Management</h2>
+    <div className="p-[95px]">
+      <div className="flex justify-between items-center mb-6">
+        <Typography variant="h5" fontWeight="bold">Cost Centre Management</Typography>
+        <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Cost Centre</Button>
+      </div>
 
-      <Button variant="contained" color="primary" onClick={() => setOpen(true)}>
-        Add Cost Centre
-      </Button>
+   <Card sx={{ boxShadow: 3, borderRadius: 3 }}>
+  <CardContent>
+    <TableContainer>
+      <Table size="small">
+        <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 'bold' }}>#</TableCell> {/* NEW COLUMN */}
+            <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {costCentres.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((c, index) => (
+            <TableRow key={c.id} hover>
+              <TableCell>{page * rowsPerPage + index + 1}</TableCell> {/* SERIAL NUMBER */}
+              <TableCell>{c.company_name}</TableCell>
+              <TableCell>{c.name}</TableCell>
+              <TableCell>{c.code}</TableCell>
+              <TableCell>{c.description}</TableCell>
+              <TableCell>{c.is_active ? 'Yes' : 'No'}</TableCell>
+              <TableCell align="center">
+                <Tooltip title="Delete" arrow>
+                  <IconButton color="error" onClick={() => deleteCostCentre(c.id)}>
+                    <Delete />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Edit" arrow>
+                  <IconButton color="primary" onClick={() => openEditModal(c)}>
+                    <Edit />
+                  </IconButton>
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+    <TablePagination
+      component="div"
+      count={costCentres.length}
+      page={page}
+      onPageChange={handleChangePage}
+      rowsPerPage={rowsPerPage}
+      onRowsPerPageChange={handleChangeRowsPerPage}
+     rowsPerPageOptions={[5, 10, 25, { label: 'All', value: -1 }]}
+      showFirstButton
+      showLastButton
+    />
+  </CardContent>
+</Card>
 
-      {/* Add Cost Centre Modal */}
-      <Dialog open={open} onClose={() => setOpen(false)}>
+
+      {/* Add Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Cost Centre</DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
+        <TextField
+  select fullWidth margin="dense" label="Company"
+  value={editForm.company}
+  onChange={(e) => handleRealTimeValidation('company', e.target.value, setEditForm, editForm, setEditFormErrors)}
+  error={!!editFormErrors.company}
+  helperText={editFormErrors.company}
+>
+  {companies.map((c) => (
+    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+  ))}
+</TextField>
+
           <TextField
-            select margin="dense" label="Company" fullWidth value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
-          >
-            {companies.map((c) => (
-              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            margin="dense" label="Cost Centre Name" fullWidth value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            fullWidth margin="dense" label="Name"
+            value={form.name}
+            onChange={(e) => handleRealTimeValidation('name', e.target.value, setForm, form, setFormErrors)}
+            error={!!formErrors.name}
+            helperText={formErrors.name}
           />
           <TextField
-            margin="dense" label="Code" fullWidth value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value })}
+            fullWidth margin="dense" label="Code"
+            value={form.code}
+            onChange={(e) => handleRealTimeValidation('code', e.target.value, setForm, form, setFormErrors)}
+            error={!!formErrors.code}
+            helperText={formErrors.code}
           />
           <TextField
-            margin="dense" label="Description" fullWidth multiline value={form.description}
+            fullWidth margin="dense" label="Description" multiline
+            value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddCostCentre} color="primary">Add</Button>
+          <Button onClick={handleAddCostCentre} variant="contained" color="primary">Add</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Edit Cost Centre Modal */}
-      <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Edit Cost Centre</DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <TextField
-            margin="dense" label="Cost Centre Name" fullWidth value={editForm.name}
-            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+            fullWidth margin="dense" label="Name"
+            value={editForm.name}
+            onChange={(e) => handleRealTimeValidation('name', e.target.value, setEditForm, editForm, setEditFormErrors)}
+            error={!!editFormErrors.name}
+            helperText={editFormErrors.name}
           />
           <TextField
-            margin="dense" label="Code" fullWidth value={editForm.code}
-            onChange={(e) => setEditForm({ ...editForm, code: e.target.value })}
+            fullWidth margin="dense" label="Code"
+            value={editForm.code}
+            onChange={(e) => handleRealTimeValidation('code', e.target.value, setEditForm, editForm, setEditFormErrors)}
+            error={!!editFormErrors.code}
+            helperText={editFormErrors.code}
           />
           <TextField
-            margin="dense" label="Description" fullWidth multiline value={editForm.description}
+            fullWidth margin="dense" label="Description" multiline
+            value={editForm.description}
             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={handleEditCostCentre} color="primary">Save</Button>
+          <Button onClick={handleEditCostCentre} variant="contained" color="primary">Save</Button>
         </DialogActions>
       </Dialog>
 
-      <table border="1" style={{ marginTop: 20, width: '100%' }}>
-        <thead>
-          <tr>
-            <th>Company</th>
-            <th>Name</th>
-            <th>Code</th>
-            <th>Description</th>
-            <th>Active</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {costCentres.map((c) => (
-            <tr key={c.id}>
-              <td>{c.company_name}</td>
-              <td>{c.name}</td>
-              <td>{c.code}</td>
-              <td>{c.description}</td>
-              <td>{c.is_active ? 'Yes' : 'No'}</td>
-              <td>
-                <Button onClick={() => deleteCostCentre(c.id)} size="small" variant="outlined" color="error">
-                  Delete
-                </Button>
-                <Button onClick={() => openEditModal(c)} size="small" variant="outlined" color="primary" style={{ marginLeft: 5 }}>
-                  Edit
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

@@ -200,7 +200,7 @@ const handleUploadCSV = async () => {
         <CardContent>
          <Table sx={{ minWidth: 650 }} size="small">
   <TableHead>
-    <TableRow sx={{ backgroundColor: '#f9fafb' }}>
+    <TableRow sx={{ backgroundColor: '#e3f2fd' }}>
       <TableCell sx={{ fontWeight: 'bold' }}>#</TableCell>
       <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
       <TableCell sx={{ fontWeight: 'bold' }}>PAN</TableCell>
@@ -247,7 +247,7 @@ const handleUploadCSV = async () => {
   onPageChange={handleChangePage}
   rowsPerPage={rowsPerPage}
   onRowsPerPageChange={handleChangeRowsPerPage}
-  rowsPerPageOptions={[5, 10, 25]}
+  rowsPerPageOptions={[5, 10, 25, { label: 'All', value: -1 }]}
   showFirstButton
   showLastButton
 />
