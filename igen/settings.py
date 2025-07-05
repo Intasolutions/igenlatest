@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
 
+    # Existing apps
     'users',
     'companies',
     'banks',
@@ -25,9 +26,15 @@ INSTALLED_APPS = [
     'projects',
     'properties',
     'entities',
-    "receipts",
+    'receipts',
     'assets',
+
+    # Newly added apps for BRD completion
+    'contracts',
+    'vendors',
+    'reports',
 ]
+
 
 AUTH_USER_MODEL = 'users.User'
 

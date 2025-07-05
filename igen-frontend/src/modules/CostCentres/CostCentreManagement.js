@@ -18,18 +18,17 @@ export default function CostCentreManagement() {
   const [form, setForm] = useState({
     company: '',
     name: '',
-    code: '',
-    description: '',
+    transaction_direction: '',
+    notes: '',
   });
 
-const [editForm, setEditForm] = useState({
-  id: '',
-  company: '',
-  name: '',
-  code: '',
-  description: '',
-});
-
+  const [editForm, setEditForm] = useState({
+    cost_centre_id: '',
+    company: '',
+    name: '',
+    transaction_direction: '',
+    notes: '',
+  });
 
   const [formErrors, setFormErrors] = useState({});
   const [editFormErrors, setEditFormErrors] = useState({});
@@ -67,15 +66,12 @@ const [editForm, setEditForm] = useState({
   }, []);
 
   const validateForm = (data, isEdit = false) => {
-  const errors = {};
-  if (!isEdit && !data.company) errors.company = 'Company is required';
-  if (!data.name) errors.name = 'Name is required';
-  else if (!/^[A-Za-z][A-Za-z0-9 ]*$/.test(data.name)) errors.name = 'Name must start with a letter and contain no special characters';
-  if (!data.code) errors.code = 'Code is required';
-  else if (!/^\d+$/.test(data.code)) errors.code = 'Code must be numeric';
-  return errors;
-};
-
+    const errors = {};
+    if (!isEdit && !data.company) errors.company = 'Company is required';
+    if (!data.name) errors.name = 'Name is required';
+    if (!data.transaction_direction) errors.transaction_direction = 'Transaction direction is required';
+    return errors;
+  };
 
   const handleAddCostCentre = async () => {
     const errors = validateForm(form);
@@ -88,7 +84,7 @@ const [editForm, setEditForm] = useState({
       setSnackbar({ open: true, message: 'Cost Centre added successfully!', severity: 'success' });
       fetchCostCentres();
       setOpen(false);
-      setForm({ company: '', name: '', code: '', description: '' });
+      setForm({ company: '', name: '', transaction_direction: '', notes: '' });
       setFormErrors({});
     } catch (err) {
       setSnackbar({ open: true, message: 'Failed to add cost centre', severity: 'error' });
@@ -102,27 +98,26 @@ const [editForm, setEditForm] = useState({
     setErrors(errors);
   };
 
-const openEditModal = (costCentre) => {
-  setEditForm({
-    id: costCentre.id,
-    company: costCentre.company, // or costCentre.company_id depending on your API
-    name: costCentre.name,
-    code: costCentre.code,
-    description: costCentre.description,
-  });
-  setEditFormErrors({});
-  setEditOpen(true);
-};
+  const openEditModal = (costCentre) => {
+    setEditForm({
+      cost_centre_id: costCentre.cost_centre_id,
+      company: costCentre.company,
+      name: costCentre.name,
+      transaction_direction: costCentre.transaction_direction,
+      notes: costCentre.notes,
+    });
+    setEditFormErrors({});
+    setEditOpen(true);
+  };
 
   const handleEditCostCentre = async () => {
-   const errors = validateForm(editForm, true);
-
+    const errors = validateForm(editForm, true);
     if (Object.keys(errors).length > 0) {
       setEditFormErrors(errors);
       return;
     }
     try {
-      await API.put(`cost-centres/${editForm.id}/`, editForm);
+      await API.put(`cost-centres/${editForm.cost_centre_id}/`, editForm);
       setSnackbar({ open: true, message: 'Cost Centre updated successfully!', severity: 'success' });
       fetchCostCentres();
       setEditOpen(false);
@@ -148,77 +143,76 @@ const openEditModal = (costCentre) => {
         <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Cost Centre</Button>
       </div>
 
-   <Card sx={{ boxShadow: 3, borderRadius: 3 }}>
-  <CardContent>
-    <TableContainer>
-      <Table size="small">
-        <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 'bold' }}>#</TableCell> {/* NEW COLUMN */}
-            <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Code</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {costCentres.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((c, index) => (
-            <TableRow key={c.id} hover>
-              <TableCell>{page * rowsPerPage + index + 1}</TableCell> {/* SERIAL NUMBER */}
-              <TableCell>{c.company_name}</TableCell>
-              <TableCell>{c.name}</TableCell>
-              <TableCell>{c.code}</TableCell>
-              <TableCell>{c.description}</TableCell>
-              <TableCell>{c.is_active ? 'Yes' : 'No'}</TableCell>
-              <TableCell align="center">
-                <Tooltip title="Delete" arrow>
-                  <IconButton color="error" onClick={() => deleteCostCentre(c.id)}>
-                    <Delete />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Edit" arrow>
-                  <IconButton color="primary" onClick={() => openEditModal(c)}>
-                    <Edit />
-                  </IconButton>
-                </Tooltip>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-    <TablePagination
-      component="div"
-      count={costCentres.length}
-      page={page}
-      onPageChange={handleChangePage}
-      rowsPerPage={rowsPerPage}
-      onRowsPerPageChange={handleChangeRowsPerPage}
-     rowsPerPageOptions={[5, 10, 25, { label: 'All', value: -1 }]}
-      showFirstButton
-      showLastButton
-    />
-  </CardContent>
-</Card>
-
+      <Card sx={{ boxShadow: 3, borderRadius: 3 }}>
+        <CardContent>
+          <TableContainer>
+            <Table size="small">
+              <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Company</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Direction</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Notes</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Active</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }} align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {costCentres.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((c) => (
+                  <TableRow key={c.cost_centre_id} hover>
+                    <TableCell>{c.cost_centre_id}</TableCell>
+                    <TableCell>{c.company_name}</TableCell>
+                    <TableCell>{c.name}</TableCell>
+                    <TableCell>{c.transaction_direction}</TableCell>
+                    <TableCell>{c.notes}</TableCell>
+                    <TableCell>{c.is_active ? 'Yes' : 'No'}</TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Delete" arrow>
+                        <IconButton color="error" onClick={() => deleteCostCentre(c.cost_centre_id)}>
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit" arrow>
+                        <IconButton color="primary" onClick={() => openEditModal(c)}>
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            count={costCentres.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, { label: 'All', value: -1 }]}
+            showFirstButton
+            showLastButton
+          />
+        </CardContent>
+      </Card>
 
       {/* Add Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Cost Centre</DialogTitle>
         <DialogContent dividers>
-        <TextField
-  select fullWidth margin="dense" label="Company"
-  value={editForm.company}
-  onChange={(e) => handleRealTimeValidation('company', e.target.value, setEditForm, editForm, setEditFormErrors)}
-  error={!!editFormErrors.company}
-  helperText={editFormErrors.company}
->
-  {companies.map((c) => (
-    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-  ))}
-</TextField>
+          <TextField
+            select fullWidth margin="dense" label="Company"
+            value={form.company}
+            onChange={(e) => handleRealTimeValidation('company', e.target.value, setForm, form, setFormErrors)}
+            error={!!formErrors.company}
+            helperText={formErrors.company}
+          >
+            {companies.map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+            ))}
+          </TextField>
 
           <TextField
             fullWidth margin="dense" label="Name"
@@ -227,17 +221,23 @@ const openEditModal = (costCentre) => {
             error={!!formErrors.name}
             helperText={formErrors.name}
           />
+
           <TextField
-            fullWidth margin="dense" label="Code"
-            value={form.code}
-            onChange={(e) => handleRealTimeValidation('code', e.target.value, setForm, form, setFormErrors)}
-            error={!!formErrors.code}
-            helperText={formErrors.code}
-          />
+            select fullWidth margin="dense" label="Transaction Direction"
+            value={form.transaction_direction}
+            onChange={(e) => handleRealTimeValidation('transaction_direction', e.target.value, setForm, form, setFormErrors)}
+            error={!!formErrors.transaction_direction}
+            helperText={formErrors.transaction_direction}
+          >
+            <MenuItem value="Credit">Credit</MenuItem>
+            <MenuItem value="Debit">Debit</MenuItem>
+            <MenuItem value="Both">Both</MenuItem>
+          </TextField>
+
           <TextField
-            fullWidth margin="dense" label="Description" multiline
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            fullWidth margin="dense" label="Notes" multiline
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
         </DialogContent>
         <DialogActions>
@@ -257,17 +257,23 @@ const openEditModal = (costCentre) => {
             error={!!editFormErrors.name}
             helperText={editFormErrors.name}
           />
+
           <TextField
-            fullWidth margin="dense" label="Code"
-            value={editForm.code}
-            onChange={(e) => handleRealTimeValidation('code', e.target.value, setEditForm, editForm, setEditFormErrors)}
-            error={!!editFormErrors.code}
-            helperText={editFormErrors.code}
-          />
+            select fullWidth margin="dense" label="Transaction Direction"
+            value={editForm.transaction_direction}
+            onChange={(e) => handleRealTimeValidation('transaction_direction', e.target.value, setEditForm, editForm, setEditFormErrors)}
+            error={!!editFormErrors.transaction_direction}
+            helperText={editFormErrors.transaction_direction}
+          >
+            <MenuItem value="Credit">Credit</MenuItem>
+            <MenuItem value="Debit">Debit</MenuItem>
+            <MenuItem value="Both">Both</MenuItem>
+          </TextField>
+
           <TextField
-            fullWidth margin="dense" label="Description" multiline
-            value={editForm.description}
-            onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+            fullWidth margin="dense" label="Notes" multiline
+            value={editForm.notes}
+            onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
           />
         </DialogContent>
         <DialogActions>

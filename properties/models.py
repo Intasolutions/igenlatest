@@ -1,4 +1,5 @@
 from django.db import models
+from companies.models import Company
 from projects.models import Project
 
 class Property(models.Model):
@@ -8,10 +9,16 @@ class Property(models.Model):
         ('inactive', 'Inactive'),
     ]
 
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='properties',
+        help_text="Company owning this property",
+    )
     project = models.ForeignKey(
-        Project, 
-        on_delete=models.CASCADE, 
-        related_name='site_properties'  # ✅ unique related_name
+        Project,
+        on_delete=models.CASCADE,
+        related_name='site_properties',
     )
     name = models.CharField(max_length=255)
     location = models.CharField(max_length=512)

@@ -6,4 +6,14 @@ class CostCentreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CostCentre
-        fields = ['id', 'company', 'company_name', 'name', 'code', 'description', 'is_active', 'created_at']
+        fields = [
+            'cost_centre_id',
+            'company',
+            'company_name',
+            'name',
+            'transaction_direction',
+            'notes',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
