@@ -69,7 +69,11 @@ export default function CostCentreManagement() {
     const errors = {};
     if (!isEdit && !data.company) errors.company = 'Company is required';
     if (!data.name) errors.name = 'Name is required';
+    else if (data.name.length > 255) errors.name = 'Name too long (max 255 characters)';
     if (!data.transaction_direction) errors.transaction_direction = 'Transaction direction is required';
+    else if (!['Credit', 'Debit', 'Both'].includes(data.transaction_direction)) {
+      errors.transaction_direction = 'Invalid transaction direction';
+    }
     return errors;
   };
 
@@ -87,14 +91,14 @@ export default function CostCentreManagement() {
       setForm({ company: '', name: '', transaction_direction: '', notes: '' });
       setFormErrors({});
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to add cost centre', severity: 'error' });
+      setSnackbar({ open: true, message: err.response?.data?.detail || 'Failed to add cost centre', severity: 'error' });
     }
   };
 
   const handleRealTimeValidation = (field, value, setForm, form, setErrors) => {
     const updatedForm = { ...form, [field]: value };
     setForm(updatedForm);
-    const errors = validateForm(updatedForm);
+    const errors = validateForm(updatedForm, form === editForm);
     setErrors(errors);
   };
 
@@ -122,7 +126,7 @@ export default function CostCentreManagement() {
       fetchCostCentres();
       setEditOpen(false);
     } catch (err) {
-      setSnackbar({ open: true, message: 'Failed to update cost centre', severity: 'error' });
+      setSnackbar({ open: true, message: err.response?.data?.detail || 'Failed to update cost centre', severity: 'error' });
     }
   };
 

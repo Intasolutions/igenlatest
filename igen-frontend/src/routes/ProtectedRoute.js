@@ -15,7 +15,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
     if (allowedRoles.includes(userRole)) {
       return children;
-    } else {
+        } else {
       return (
         <div style={{ padding: 40 }}>
           <h2>403 Forbidden - Unauthorized</h2>

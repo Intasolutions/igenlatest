@@ -1,9 +1,14 @@
+// Modern UI version of PropertiesPage with Edit Support
+
 import React, { useEffect, useState } from 'react';
 import API from '../../api/axios';
 import {
-  Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Tabs, Tab, Box, Typography
+  Box, Button, Card, CardContent, Chip, Dialog, DialogActions,
+  DialogContent, DialogTitle, MenuItem, Snackbar, Alert,
+  Tab, Tabs, TextField, Typography, IconButton, Tooltip,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
+import { Edit, Delete } from '@mui/icons-material';
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState([]);
@@ -11,6 +16,10 @@ export default function PropertiesPage() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0);
   const [files, setFiles] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, id: null, isActive: false });
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [form, setForm] = useState({
     company: '', name: '', location: '', purchase_date: '', purchase_price: '',
     purpose: 'rental', status: 'vacant', remarks: '',
@@ -19,6 +28,7 @@ export default function PropertiesPage() {
     expected_sale_price: '', igen_service_charge: '',
     address_line1: '', address_line2: '', city: '', pincode: '', state: 'Kerala', country: 'India',
     key_date_label: '', key_date_due: '', key_date_remarks: '',
+    is_active: true
   });
 
   const fetchData = async () => {
@@ -27,50 +37,72 @@ export default function PropertiesPage() {
         API.get('properties/'),
         API.get('companies/')
       ]);
-      console.log("Fetched properties response:", propRes.data);
-
-      if (Array.isArray(propRes.data)) {
-        setProperties(propRes.data);
-      } else if (propRes.data.results && Array.isArray(propRes.data.results)) {
-        setProperties(propRes.data.results);
-      } else {
-        console.error("Unexpected properties response:", propRes.data);
-        setProperties([]);
-      }
-
+      setProperties(Array.isArray(propRes.data) ? propRes.data : propRes.data.results || []);
       setCompanies(compRes.data);
     } catch (err) {
-      console.error("Fetch error:", err);
-      alert("Failed to fetch data");
+      setSnackbar({ open: true, message: 'Failed to fetch data', severity: 'error' });
     }
   };
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleAddProperty = async () => {
+  const validateForm = () => {
+    const requiredFields = ['company', 'name', 'location', 'purchase_date', 'purchase_price'];
+    for (const field of requiredFields) {
+      if (!form[field] || form[field].toString().trim() === '') {
+        setSnackbar({
+          open: true,
+          message: `Please enter a valid ${field.replace('_', ' ')}`,
+          severity: 'warning'
+        });
+        return false;
+      }
+    }
+
+    if (form.pincode && !/^[0-9]{6}$/.test(form.pincode)) {
+      setSnackbar({ open: true, message: 'Pincode must be a 6-digit number', severity: 'warning' });
+      return false;
+    }
+
+    if (form.purchase_price && parseFloat(form.purchase_price) <= 0) {
+      setSnackbar({ open: true, message: 'Purchase price must be greater than zero', severity: 'warning' });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleAddOrUpdateProperty = async () => {
+    if (!validateForm()) return;
+
     const formData = new FormData();
     Object.keys(form).forEach((key) => {
-      let value = form[key];
-      if (typeof value === "string") value = value.trim();
-      if (value !== undefined && value !== null && value !== "") formData.append(key, value);
+      const value = form[key]?.toString().trim();
+      if (value !== undefined && value !== null && value !== '') formData.append(key, value);
     });
+    formData.append('is_active', form.is_active);
 
     try {
-      const response = await API.post('properties/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let response;
+      if (isEditMode && editId) {
+        response = await API.put(`properties/${editId}/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        response = await API.post('properties/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
       const propertyId = response.data.id;
-      alert('Property added successfully');
 
       if (files) {
-        for (let i = 0; i < files.length; i++) {
+        for (let file of files) {
           const docData = new FormData();
           docData.append('property', propertyId);
-          docData.append('file_name', files[i].name);
-          docData.append('file_url', files[i]);
+          docData.append('file_name', file.name);
+          docData.append('file_url', file);
           await API.post('property-documents/', docData);
-
-
         }
       }
 
@@ -83,12 +115,12 @@ export default function PropertiesPage() {
         });
       }
 
+      setSnackbar({ open: true, message: isEditMode ? 'Property updated successfully' : 'Property added successfully', severity: 'success' });
       setOpen(false);
       fetchData();
       resetForm();
     } catch (err) {
-      console.error('Add property error:', err.response?.data || err);
-      alert(`Failed to save property: ${JSON.stringify(err.response?.data)}`);
+      setSnackbar({ open: true, message: 'Failed to save property', severity: 'error' });
     }
   };
 
@@ -101,90 +133,138 @@ export default function PropertiesPage() {
       expected_sale_price: '', igen_service_charge: '',
       address_line1: '', address_line2: '', city: '', pincode: '', state: 'Kerala', country: 'India',
       key_date_label: '', key_date_due: '', key_date_remarks: '',
+      is_active: true
     });
     setFiles(null);
+    setIsEditMode(false);
+    setEditId(null);
   };
 
-  const handleToggleActive = async (id, isActive) => {
-    const confirmMsg = isActive ? 'Deactivate this property?' : 'Activate this property?';
-    if (!window.confirm(confirmMsg)) return;
+  const openEditDialog = (prop) => {
+    setForm({
+      ...form,
+      ...prop
+    });
+    setEditId(prop.id);
+    setIsEditMode(true);
+    setOpen(true);
+  };
+
+  const proceedToggle = async (id, isActive) => {
+    setSnackbar({
+      open: true,
+      message: isActive ? 'Deactivating property...' : 'Activating property...',
+      severity: 'info'
+    });
+
     try {
       await API.patch(`properties/${id}/`, { is_active: !isActive });
-      alert(isActive ? 'Deactivated' : 'Activated');
       fetchData();
+      setSnackbar({
+        open: true,
+        message: isActive ? 'Property deactivated successfully' : 'Property activated successfully',
+        severity: 'success'
+      });
     } catch (err) {
-      console.error('Toggle error:', err.response?.data || err);
-      alert('Failed to update property status');
+      setSnackbar({ open: true, message: 'Failed to update property status', severity: 'error' });
+    } finally {
+      setConfirmDialog({ open: false, id: null, isActive: false });
     }
   };
 
+  const handleToggleActive = (id, isActive) => {
+    if (isActive) {
+      setConfirmDialog({ open: true, id, isActive });
+    } else {
+      proceedToggle(id, isActive);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'occupied': return 'primary';
+      case 'vacant': return 'warning';
+      case 'sold': return 'error';
+      case 'not_for_rent': return 'default';
+      default: return 'info';
+    }
+  };
+
+
+
   return (
-    <div style={{ padding: 20 }}>
-      <Typography variant="h4" gutterBottom>Property Master</Typography>
-      <Button variant="contained" onClick={() => setOpen(true)}>Add Property</Button>
 
-      <table border="1" style={{ marginTop: 20, width: '100%' }}>
-        <thead>
-          <tr>
-            <th>ID</th><th>Company</th><th>Name</th><th>Location</th><th>Purchase Date</th>
-            <th>Purchase Price</th><th>Purpose</th><th>Status</th>
-            <th>Property Type</th><th>BHK</th><th>Bathrooms</th>
-            <th>Built-up Area</th><th>Land Area</th>
-            <th>Rent/Sale Price</th><th>iGen Charge</th>
-            <th>Address</th><th>Documents</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.isArray(properties) && properties.length > 0 ? (
-            properties.map((prop) => (
-              <tr key={prop.id}>
-                <td>{prop.id}</td>
-                <td>{prop.company_name}</td>
-                <td>{prop.name}</td>
-                <td>{prop.location}</td>
-                <td>{prop.purchase_date}</td>
-                <td>{prop.purchase_price}</td>
-                <td>{prop.purpose}</td>
-                <td>{prop.status}</td>
-                <td>{prop.property_type}</td>
-                <td>{prop.config_bhk}</td>
-                <td>{prop.config_bathroom}</td>
-                <td>{prop.build_up_area_sqft}</td>
-                <td>{prop.land_area_cents}</td>
-                <td>{prop.purpose === 'rental' ? prop.monthly_rent : prop.expected_sale_price}</td>
-                <td>{prop.igen_service_charge}</td>
-                <td>{[prop.address_line1, prop.city, prop.pincode].filter(Boolean).join(", ")}</td>
-                <td>
-                  {prop.documents?.length > 0 ? (
-                    prop.documents.map(doc => (
-                      <div key={doc.id}>
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                          {doc.file_name}
-                        </a>
-                      </div>
-                    ))
-                  ) : (
-                    "No Docs"
-                  )}
-                </td>
-                <td>
-                  <Button onClick={() => handleToggleActive(prop.id, prop.is_active)} size="small" color="error">
-                    {prop.is_active ? 'Deactivate' : 'Activate'}
-                  </Button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="18" style={{ textAlign: 'center' }}>No properties found</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    
+    <Box p={5}>
+      <Box display="flex" justifyContent="space-between" mb={3}>
+        <Typography variant="h5" fontWeight="bold">Property Management</Typography>
+        <Button variant="contained" onClick={() => { setOpen(true); resetForm(); }}>Add Property</Button>
+      </Box>
 
+      <Card sx={{ borderRadius: 3 }}>
+        <CardContent>
+          <TableContainer>
+            <Table size="small">
+              <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
+                <TableRow>
+                  <TableCell><strong>ID</strong></TableCell>
+                  <TableCell><strong>Company</strong></TableCell>
+                  <TableCell><strong>Name</strong></TableCell>
+                  <TableCell><strong>Status</strong></TableCell>
+                  <TableCell><strong>Location</strong></TableCell>
+                  <TableCell><strong>Type</strong></TableCell>
+                  <TableCell><strong>Area</strong></TableCell>
+                  <TableCell><strong>Rent/Sale</strong></TableCell>
+                  <TableCell><strong>Actions</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {properties.map(prop => (
+                  <TableRow
+                    key={prop.id}
+                    sx={{ backgroundColor: prop.is_active ? '#e8f5e9' : '#fffde7' }}
+                  >
+                    <TableCell>{prop.id}</TableCell>
+                    <TableCell>{prop.company_name}</TableCell>
+                    <TableCell>{prop.name}</TableCell>
+                   <TableCell>
+  <Chip
+    label={prop.status}
+    color={getStatusColor(prop.status)}
+    size="small"
+    sx={{ textTransform: 'capitalize' }}
+  />
+</TableCell>
+
+                    <TableCell>{prop.location}</TableCell>
+                    <TableCell>{prop.property_type}</TableCell>
+                    <TableCell>{prop.build_up_area_sqft} sqft</TableCell>
+                    <TableCell>{prop.purpose === 'rental' ? prop.monthly_rent : prop.expected_sale_price}</TableCell>
+                    <TableCell>
+                      <Tooltip title="Edit">
+                        <IconButton color="primary" onClick={() => openEditDialog(prop)}>
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={prop.is_active ? 'Deactivate' : 'Activate'}>
+                        <IconButton color={prop.is_active ? 'error' : 'success'} onClick={() => handleToggleActive(prop.id, prop.is_active)}>
+                          <Delete />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      {/* Dialog component remains unchanged except for button text */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add Property</DialogTitle>
+        <DialogTitle>{isEditMode ? 'Edit Property' : 'Add Property'}</DialogTitle>
         <DialogContent>
+           <DialogContent>
           <Tabs value={tab} onChange={(e, v) => setTab(v)}>
             <Tab label="PROPERTY DETAILS" />
             <Tab label="CONFIGURATION & FINANCIALS" />
@@ -291,12 +371,45 @@ export default function PropertiesPage() {
               onChange={(e) => setForm({ ...form, key_date_remarks: e.target.value })} />
           </Box>
         </DialogContent>
-
+        </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddProperty} variant="contained">Save</Button>
+          <Button onClick={handleAddOrUpdateProperty} variant="contained">
+            {isEditMode ? 'Update' : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
-    </div>
+<Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}>
+  <DialogTitle>Confirm Deactivation</DialogTitle>
+  <DialogContent>
+    <Typography>Are you sure you want to deactivate this property?</Typography>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}>Cancel</Button>
+    <Button
+      onClick={() => proceedToggle(confirmDialog.id, confirmDialog.isActive)}
+      color="error"
+      variant="contained"
+    >
+      Deactivate
+    </Button>
+  </DialogActions>
+</Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }
