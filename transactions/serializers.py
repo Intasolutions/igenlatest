@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Transaction
+from .models import Transaction, ClassifiedTransaction
 
 class TransactionSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
@@ -16,3 +16,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             'transaction_type', 'transaction_type_name',
             'direction', 'amount', 'date', 'notes', 'created_at'
         ]
+
+class ClassifiedTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassifiedTransaction
+        fields = '__all__'

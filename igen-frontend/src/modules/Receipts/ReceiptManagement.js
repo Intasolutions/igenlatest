@@ -1,4 +1,4 @@
-// ReceiptManagement.js
+// src/pages/ReceiptManagement.js
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import {
@@ -128,14 +128,14 @@ export default function ReceiptManagement() {
   const openEditDialog = (receipt) => {
     setEditing(receipt);
     setForm({
-      transaction_type: receipt.transaction_type || '',
+      transaction_type: receipt.transaction_type_id || '',
       date: receipt.date || '',
       amount: receipt.amount || '',
       reference: receipt.reference || '',
       entity: receipt.entity || '',
       company: receipt.company || '',
       bank: receipt.bank || '',
-      cost_centre: receipt.cost_centre || '',
+      cost_centre: receipt.cost_centre_id || '',
       notes: receipt.notes || ''
     });
     setOpen(true);
@@ -155,7 +155,9 @@ export default function ReceiptManagement() {
             value={form.transaction_type} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}>
             <MenuItem value="">Select</MenuItem>
             {transactionTypes.map((t) => (
-              <MenuItem key={t.transaction_type_id} value={t.transaction_type_id}>{t.name}</MenuItem>
+              <MenuItem key={t.transaction_type_id || t.id} value={t.transaction_type_id || t.id}>
+                {t.name}
+              </MenuItem>
             ))}
           </TextField>
 
@@ -194,7 +196,7 @@ export default function ReceiptManagement() {
             value={form.cost_centre} onChange={(e) => setForm({ ...form, cost_centre: e.target.value })}>
             <MenuItem value="">Select</MenuItem>
             {costCentres.map((c) => (
-              <MenuItem key={c.cost_centre_id} value={c.cost_centre_id}>{c.name}</MenuItem>
+              <MenuItem key={c.cost_centre_id || c.id} value={c.cost_centre_id || c.id}>{c.name}</MenuItem>
             ))}
           </TextField>
 
