@@ -1,10 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .models import Project, Property
-from .serializers import ProjectSerializer, PropertySerializer
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from users.permissions import IsSuperUser
 
+from .models import Project, Property
+from .serializers import ProjectSerializer, PropertySerializer
+
+import csv
+
+# --------------------
+# ViewSet: Project CRUD
+# --------------------
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
@@ -20,19 +27,19 @@ class ProjectViewSet(viewsets.ModelViewSet):
         print("====== DEBUG END ======\n")
         return response
 
+
+# ----------------------
+# ViewSet: Property CRUD
+# ----------------------
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
     permission_classes = [IsSuperUser]
 
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-import csv
-from .serializers import ProjectSerializer
-
+# --------------------------
+# API: Bulk Project CSV Upload
+# --------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def bulk_upload(request):
@@ -40,8 +47,12 @@ def bulk_upload(request):
     if not file:
         return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
-    decoded_file = file.read().decode('utf-8').splitlines()
-    reader = csv.DictReader(decoded_file)
+    try:
+        decoded_file = file.read().decode('utf-8').splitlines()
+        reader = csv.DictReader(decoded_file)
+    except Exception as e:
+        return Response({'error': 'Invalid CSV format', 'details': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     results = []
 
     for i, row in enumerate(reader, start=1):

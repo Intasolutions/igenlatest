@@ -15,16 +15,13 @@ class Entity(models.Model):
         ('Inactive', 'Inactive'),
     ]
 
-    entity_id = models.AutoField(
-        primary_key=True,
-        help_text="Unique identifier for the entity"
-    )
+    # ✅ Removed `entity_id` and allowed Django to auto-create `id`
     company = models.ForeignKey(
         Company,
         on_delete=models.CASCADE,
         related_name='entities',
         help_text="Company this entity belongs to",
-        null=True,        # TEMPORARY: allows migration without immediate default
+        null=True,
         blank=True
     )
     name = models.CharField(

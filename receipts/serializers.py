@@ -1,22 +1,19 @@
+# serializers.py
 from rest_framework import serializers
-from .models import Receipt
+from .models import Receipt, TransactionType, CostCentre
 
 class ReceiptSerializer(serializers.ModelSerializer):
-    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    transaction_type_id = serializers.PrimaryKeyRelatedField(
+        source='transaction_type', queryset=TransactionType.objects.all(), write_only=True
+    )
+    cost_centre_id = serializers.PrimaryKeyRelatedField(
+        source='cost_centre', queryset=CostCentre.objects.all(), write_only=True
+    )
 
     class Meta:
         model = Receipt
         fields = [
-            'id',
-            'transaction_type',
-            'transaction_type_display',
-            'date',
-            'amount',
-            'reference',
-            'entity',
-            'bank',
-            'cost_centre',
-            'company',
-            'notes',
-            'created_at',
+            'id', 'transaction_type', 'transaction_type_id', 'date', 'amount', 'reference',
+            'entity', 'company', 'bank', 'cost_centre', 'cost_centre_id', 'notes', 'document'
         ]
+        read_only_fields = ['transaction_type', 'cost_centre']

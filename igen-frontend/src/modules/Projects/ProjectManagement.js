@@ -21,7 +21,10 @@ export default function ProjectManagement() {
   const fetchProjects = async () => {
     try {
       const res = await API.get('projects/');
-      setProjects(res.data);
+      console.log('Fetched projects:', res.data); // Debug log
+      // Ensure res.data is always an array
+      setProjects(res.data.results || []);
+
     } catch (err) {
       console.error('Error fetching projects:', err.response?.data || err);
       alert('Error fetching projects');
@@ -43,7 +46,13 @@ export default function ProjectManagement() {
       alert('Project added successfully');
       fetchProjects();
       setOpen(false);
-      setForm({ name: '', start_date: '', end_date: '', stakeholders: '', expected_return: '' });
+      setForm({
+        name: '',
+        start_date: '',
+        end_date: '',
+        stakeholders: '',
+        expected_return: ''
+      });
     } catch (err) {
       console.error('Add project error:', err.response?.data || err);
       alert('Failed to add project');
@@ -153,20 +162,24 @@ export default function ProjectManagement() {
           </tr>
         </thead>
         <tbody>
-          {projects.map((p) => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{p.start_date}</td>
-              <td>{p.end_date || '-'}</td>
-              <td>{p.stakeholders || '-'}</td>
-              <td>{p.expected_return || '-'}</td>
-              <td>
-                <Button onClick={() => deleteProject(p.id)} size="small" variant="outlined" color="error">
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {Array.isArray(projects) && projects.length > 0 ? (
+            projects.map((p) => (
+              <tr key={p.id}>
+                <td>{p.name}</td>
+                <td>{p.start_date}</td>
+                <td>{p.end_date || '-'}</td>
+                <td>{p.stakeholders || '-'}</td>
+                <td>{p.expected_return || '-'}</td>
+                <td>
+                  <Button onClick={() => deleteProject(p.id)} size="small" variant="outlined" color="error">
+                    Delete
+                  </Button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr><td colSpan="6" style={{ textAlign: 'center' }}>No projects found</td></tr>
+          )}
         </tbody>
       </table>
 

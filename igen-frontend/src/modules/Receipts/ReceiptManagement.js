@@ -1,75 +1,113 @@
+// ReceiptManagement.js
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
-import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem } from '@mui/material';
+import {
+  Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem
+} from '@mui/material';
 
 export default function ReceiptManagement() {
   const [receipts, setReceipts] = useState([]);
+  const [transactionTypes, setTransactionTypes] = useState([]);
   const [entities, setEntities] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [banks, setBanks] = useState([]);
+  const [costCentres, setCostCentres] = useState([]);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null); // ✅ tracking editing receipt
+  const [editing, setEditing] = useState(null);
+  const [document, setDocument] = useState(null);
+
   const [form, setForm] = useState({
-    transaction_type: 'RECEIPT',
+    transaction_type: '',
     date: '',
     amount: '',
     reference: '',
     entity: '',
     company: '',
-    notes: '',
+    bank: '',
+    cost_centre: '',
+    notes: ''
   });
-
-  const fetchReceipts = async () => {
-    try {
-      const res = await API.get('receipts/');
-      setReceipts(res.data);
-    } catch (err) {
-      console.error(err);
-      alert('Error fetching receipts');
-    }
-  };
-
-  const fetchEntities = async () => {
-    try {
-      const res = await API.get('entities/');
-      setEntities(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchCompanies = async () => {
-    try {
-      const res = await API.get('companies/');
-      setCompanies(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   useEffect(() => {
     fetchReceipts();
+    fetchTransactionTypes();
     fetchEntities();
     fetchCompanies();
+    fetchBanks();
+    fetchCostCentres();
   }, []);
 
-  const resetForm = () => setForm({ transaction_type: 'RECEIPT', date: '', amount: '', reference: '', entity: '', company: '', notes: '' });
+  const fetchReceipts = async () => {
+    const res = await API.get('receipts/');
+    setReceipts(res.data);
+  };
 
-  const handleAddOrUpdate = async () => {
-    if (!form.date || !form.amount) {
-      alert('Date and Amount are required');
-      return;
-    }
+  const fetchTransactionTypes = async () => {
+    const res = await API.get('transaction-types/?direction=Credit&status=Active');
+    setTransactionTypes(res.data);
+  };
+
+  const fetchEntities = async () => {
+    const res = await API.get('entities/');
+    setEntities(res.data);
+  };
+
+  const fetchCompanies = async () => {
+    const res = await API.get('companies/');
+    setCompanies(res.data);
+  };
+
+  const fetchBanks = async () => {
+    const res = await API.get('banks/');
+    setBanks(res.data);
+  };
+
+  const fetchCostCentres = async () => {
+    const res = await API.get('cost-centres/');
+    setCostCentres(res.data);
+  };
+
+  const resetForm = () => {
+    setForm({
+      transaction_type: '',
+      date: '',
+      amount: '',
+      reference: '',
+      entity: '',
+      company: '',
+      bank: '',
+      cost_centre: '',
+      notes: ''
+    });
+    setDocument(null);
+  };
+
+  const handleSubmit = async () => {
+    const formData = new FormData();
+
+    if (form.transaction_type) formData.append('transaction_type_id', form.transaction_type);
+    if (form.cost_centre) formData.append('cost_centre_id', form.cost_centre);
+    formData.append('amount', form.amount);
+    formData.append('date', form.date);
+    formData.append('reference', form.reference);
+    formData.append('entity', form.entity);
+    formData.append('company', form.company);
+    formData.append('bank', form.bank);
+    formData.append('notes', form.notes);
+    if (document) formData.append('document', document);
+
     try {
       if (editing) {
-        await API.put(`receipts/${editing.id}/`, form);
+        await API.put(`receipts/${editing.id}/`, formData);
         alert('Receipt updated');
       } else {
-        await API.post('receipts/', form);
+        await API.post('receipts/', formData);
         alert('Receipt added');
       }
       fetchReceipts();
-      setOpen(false);
       resetForm();
+      setOpen(false);
       setEditing(null);
     } catch (err) {
       console.error(err.response?.data || err);
@@ -78,27 +116,27 @@ export default function ReceiptManagement() {
   };
 
   const handleDeleteReceipt = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this receipt?')) return;
+    if (!window.confirm('Delete this receipt?')) return;
     try {
       await API.delete(`receipts/${id}/`);
-      alert('Receipt deleted');
       fetchReceipts();
     } catch (err) {
-      console.error(err.response?.data || err);
-      alert('Failed to delete receipt');
+      alert('Delete failed');
     }
   };
 
   const openEditDialog = (receipt) => {
     setEditing(receipt);
     setForm({
-      transaction_type: receipt.transaction_type,
-      date: receipt.date,
-      amount: receipt.amount,
-      reference: receipt.reference,
+      transaction_type: receipt.transaction_type || '',
+      date: receipt.date || '',
+      amount: receipt.amount || '',
+      reference: receipt.reference || '',
       entity: receipt.entity || '',
       company: receipt.company || '',
-      notes: receipt.notes || '',
+      bank: receipt.bank || '',
+      cost_centre: receipt.cost_centre || '',
+      notes: receipt.notes || ''
     });
     setOpen(true);
   };
@@ -106,98 +144,72 @@ export default function ReceiptManagement() {
   return (
     <div style={{ padding: 20 }}>
       <h2>Receipt Management</h2>
-      <Button variant="contained" color="primary" onClick={() => { resetForm(); setEditing(null); setOpen(true); }}>
-        Add Receipt
+      <Button variant="contained" onClick={() => { resetForm(); setOpen(true); setEditing(null); }}>
+        Add New Receipt
       </Button>
 
-      <Dialog open={open} onClose={() => setOpen(false)}>
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Edit Receipt' : 'Add New Receipt'}</DialogTitle>
         <DialogContent>
-          <TextField
-            select
-            label="Transaction Type"
-            margin="dense"
-            fullWidth
-            value={form.transaction_type}
-            onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
-          >
-            <MenuItem value="RECEIPT">Receipt</MenuItem>
-            <MenuItem value="PAYMENT">Payment</MenuItem>
-          </TextField>
-
-          <TextField
-            margin="dense"
-            label="Date (YYYY-MM-DD)"
-            fullWidth
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-          />
-
-          <TextField
-            margin="dense"
-            label="Amount"
-            type="number"
-            fullWidth
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-          />
-
-          <TextField
-            margin="dense"
-            label="Reference"
-            fullWidth
-            value={form.reference}
-            onChange={(e) => setForm({ ...form, reference: e.target.value })}
-          />
-
-          <TextField
-            select
-            label="Entity"
-            margin="dense"
-            fullWidth
-            value={form.entity}
-            onChange={(e) => setForm({ ...form, entity: e.target.value })}
-          >
-            <MenuItem value="">Select entity</MenuItem>
-            {entities.map((ent) => (
-              <MenuItem key={ent.id} value={ent.id}>
-                {ent.name}
-              </MenuItem>
+          <TextField select fullWidth margin="dense" label="Transaction Type"
+            value={form.transaction_type} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}>
+            <MenuItem value="">Select</MenuItem>
+            {transactionTypes.map((t) => (
+              <MenuItem key={t.transaction_type_id} value={t.transaction_type_id}>{t.name}</MenuItem>
             ))}
           </TextField>
 
-          <TextField
-            select
-            label="Company"
-            margin="dense"
-            fullWidth
-            value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
-          >
-            <MenuItem value="">Select company</MenuItem>
-            {companies.map((comp) => (
-              <MenuItem key={comp.id} value={comp.id}>
-                {comp.name}
-              </MenuItem>
+          <TextField fullWidth margin="dense" label="Date (YYYY-MM-DD)"
+            value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <TextField fullWidth margin="dense" label="Amount" type="number"
+            value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <TextField fullWidth margin="dense" label="Reference"
+            value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
+
+          <TextField select fullWidth margin="dense" label="Entity"
+            value={form.entity} onChange={(e) => setForm({ ...form, entity: e.target.value })}>
+            <MenuItem value="">Select</MenuItem>
+            {entities.map((e) => (
+              <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>
             ))}
           </TextField>
 
-          <TextField
-            margin="dense"
-            label="Notes"
-            fullWidth
-            multiline
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
+          <TextField select fullWidth margin="dense" label="Company"
+            value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}>
+            <MenuItem value="">Select</MenuItem>
+            {companies.map((c) => (
+              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField select fullWidth margin="dense" label="Bank"
+            value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })}>
+            <MenuItem value="">Select</MenuItem>
+            {banks.map((b) => (
+              <MenuItem key={b.id} value={b.id}>{b.bank_name || b.name || `Bank ${b.id}`}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField select fullWidth margin="dense" label="Cost Centre"
+            value={form.cost_centre} onChange={(e) => setForm({ ...form, cost_centre: e.target.value })}>
+            <MenuItem value="">Select</MenuItem>
+            {costCentres.map((c) => (
+              <MenuItem key={c.cost_centre_id} value={c.cost_centre_id}>{c.name}</MenuItem>
+            ))}
+          </TextField>
+
+          <TextField fullWidth margin="dense" multiline label="Notes"
+            value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+
+          <input type="file" onChange={(e) => setDocument(e.target.files[0])} style={{ marginTop: 10 }} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddOrUpdate} color="primary">{editing ? 'Update' : 'Add'}</Button>
+          <Button onClick={handleSubmit}>{editing ? 'Update' : 'Add'}</Button>
         </DialogActions>
       </Dialog>
 
-      <table border="1" style={{ marginTop: 20, width: '100%' }}>
+      <table border="1" width="100%" style={{ marginTop: 20 }}>
         <thead>
           <tr>
             <th>ID</th>
@@ -207,28 +219,36 @@ export default function ReceiptManagement() {
             <th>Reference</th>
             <th>Entity</th>
             <th>Company</th>
+            <th>Bank</th>
+            <th>Cost Centre</th>
             <th>Notes</th>
+            <th>Document</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {receipts.map((rec) => (
-            <tr key={rec.id}>
-              <td>{rec.id}</td>
-              <td>{rec.transaction_type}</td>
-              <td>{rec.date}</td>
-              <td>{rec.amount}</td>
-              <td>{rec.reference || '-'}</td>
-              <td>{rec.entity || '-'}</td>
-              <td>{rec.company || '-'}</td>
-              <td>{rec.notes || '-'}</td>
+          {receipts.map((r) => (
+            <tr key={r.id}>
+              <td>{r.id}</td>
+              <td>{r.transaction_type_name || r.transaction_type}</td>
+              <td>{r.date}</td>
+              <td>{r.amount}</td>
+              <td>{r.reference}</td>
+              <td>{r.entity_name || r.entity}</td>
+              <td>{r.company_name || r.company}</td>
+              <td>{r.bank_name || r.bank}</td>
+              <td>{r.cost_centre_name || r.cost_centre}</td>
+              <td>{r.notes}</td>
               <td>
-                <Button onClick={() => openEditDialog(rec)} size="small" variant="outlined" style={{ marginRight: 5 }}>
-                  Edit
-                </Button>
-                <Button onClick={() => handleDeleteReceipt(rec.id)} size="small" variant="outlined" color="error">
-                  Delete
-                </Button>
+                {r.document ? (
+                  <a href={r.document} target="_blank" rel="noopener noreferrer">View</a>
+                ) : (
+                  'No File'
+                )}
+              </td>
+              <td>
+                <Button size="small" onClick={() => openEditDialog(r)}>Edit</Button>
+                <Button size="small" color="error" onClick={() => handleDeleteReceipt(r.id)}>Delete</Button>
               </td>
             </tr>
           ))}

@@ -7,6 +7,8 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
+    'users',
+    'companies',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -17,8 +19,8 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # Existing apps
-    'users',
-    'companies',
+    
+    
     'banks',
     'cost_centres',
     'transaction_types',

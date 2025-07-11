@@ -30,7 +30,7 @@ export default function EntityManagement() {
   const fetchEntities = async () => {
     try {
       const res = await API.get('entities/');
-      setEntities(res.data);
+      setEntities(Array.isArray(res.data) ? res.data : res.data.results || []);
     } catch (err) {
       console.error('Fetch entities error:', err.response?.data);
       setSnackbar({ open: true, message: 'Error fetching entities', severity: 'error' });
@@ -50,7 +50,8 @@ export default function EntityManagement() {
   const fetchProperties = async () => {
     try {
       const res = await API.get('properties/');
-      setProperties(res.data);
+      const data = res.data;
+      setProperties(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
       console.error('Fetch properties error:', err.response?.data);
       setSnackbar({ open: true, message: 'Error fetching properties', severity: 'error' });
@@ -60,7 +61,8 @@ export default function EntityManagement() {
   const fetchProjects = async () => {
     try {
       const res = await API.get('projects/');
-      setProjects(res.data);
+      const data = res.data;
+      setProjects(Array.isArray(data) ? data : data.results || []);
     } catch (err) {
       console.error('Fetch projects error:', err.response?.data);
       setSnackbar({ open: true, message: 'Error fetching projects', severity: 'error' });
@@ -147,14 +149,12 @@ export default function EntityManagement() {
         <DialogTitle>{isEditMode ? 'Edit Entity' : 'Add New Entity'}</DialogTitle>
         <DialogContent>
           <TextField select margin="dense" label="Company *" fullWidth required
-            value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}
-          >
+            value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}>
             {companies.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
           </TextField>
 
           <TextField margin="dense" label="Name *" fullWidth required
-            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
+            value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
 
           <div className="flex space-x-4 mt-3 mb-2">
             <Typography>Entity Type</Typography>
@@ -168,30 +168,26 @@ export default function EntityManagement() {
 
           {form.entity_type === 'Property' && (
             <TextField select margin="dense" label="Linked Property *" fullWidth required
-              value={form.linked_property} onChange={(e) => setForm({ ...form, linked_property: e.target.value })}
-            >
+              value={form.linked_property} onChange={(e) => setForm({ ...form, linked_property: e.target.value })}>
               {properties.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
           )}
 
           {form.entity_type === 'Project' && (
             <TextField select margin="dense" label="Linked Project *" fullWidth required
-              value={form.linked_project} onChange={(e) => setForm({ ...form, linked_project: e.target.value })}
-            >
+              value={form.linked_project} onChange={(e) => setForm({ ...form, linked_project: e.target.value })}>
               {projects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
           )}
 
           <TextField select margin="dense" label="Status" fullWidth value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-          >
+            onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <MenuItem value="Active">Active</MenuItem>
             <MenuItem value="Inactive">Inactive</MenuItem>
           </TextField>
 
           <TextField margin="dense" label="Remarks" fullWidth multiline
-            value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-          />
+            value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>CANCEL</Button>

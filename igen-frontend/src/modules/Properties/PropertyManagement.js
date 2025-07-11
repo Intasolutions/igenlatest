@@ -48,7 +48,9 @@ export default function PropertiesPage() {
         API.get('properties/'),
         API.get('companies/')
       ]);
-      setProperties(Array.isArray(propRes.data) ? propRes.data : propRes.data.results || []);
+      const propertyList = Array.isArray(propRes.data) ? propRes.data : propRes.data.results;
+setProperties(Array.isArray(propertyList) ? propertyList : []);
+
       setCompanies(compRes.data);
     } catch {
       setSnackbar({ open: true, message: 'Failed to fetch data', severity: 'error' });

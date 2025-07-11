@@ -9,12 +9,20 @@ class TransactionTypeViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionTypeSerializer
     permission_classes = [IsSuperUser]
 
-    def get_queryset(self):
-        queryset = TransactionType.objects.all()
-        status_param = self.request.query_params.get('status')
-        if status_param in ['Active', 'Inactive']:
-            queryset = queryset.filter(status=status_param)  # ✅ correct indentation
-        return queryset
+def get_queryset(self):
+    queryset = TransactionType.objects.all()
+    direction = self.request.query_params.get('direction')
+    status_param = self.request.query_params.get('status')
+
+    if direction:
+        queryset = queryset.filter(direction=direction)  # ← properly indented
+
+    if status_param:
+        queryset = queryset.filter(status=status_param)  # ← properly indented
+
+    return queryset
+
+
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

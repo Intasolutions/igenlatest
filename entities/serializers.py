@@ -9,26 +9,35 @@ class EntitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Entity
         fields = [
-            'entity_id', 'company', 'company_name',
-            'name', 'entity_type', 'linked_property', 'linked_property_name',
-            'linked_project', 'linked_project_name', 'status', 'remarks',
+            'id',  # ✅ Use default `id`, not `entity_id` unless your model explicitly defines it.
+            'company', 'company_name',
+            'name', 'entity_type',
+            'linked_property', 'linked_property_name',
+            'linked_project', 'linked_project_name',
+            'status', 'remarks',
         ]
-        read_only_fields = ['entity_id', 'company_name', 'linked_property_name', 'linked_project_name']
+        read_only_fields = [
+            'id', 'company_name', 'linked_property_name', 'linked_project_name'
+        ]
 
     def validate(self, data):
-        # For PATCH, skip validation if no entity_type change
-        if self.partial:
-            return data
-
         entity_type = data.get('entity_type')
         linked_property = data.get('linked_property')
         linked_project = data.get('linked_project')
 
         if entity_type == 'Property' and not linked_property:
-            raise serializers.ValidationError({"linked_property": "linked_property is required for entity_type=Property"})
+            raise serializers.ValidationError({
+                "linked_property": "linked_property is required for entity_type='Property'"
+            })
+
         if entity_type == 'Project' and not linked_project:
-            raise serializers.ValidationError({"linked_project": "linked_project is required for entity_type=Project"})
+            raise serializers.ValidationError({
+                "linked_project": "linked_project is required for entity_type='Project'"
+            })
+
         if entity_type == 'Internal' and (linked_property or linked_project):
-            raise serializers.ValidationError("linked_property or linked_project must not be set for entity_type=Internal")
+            raise serializers.ValidationError(
+                "linked_property or linked_project must not be set for entity_type='Internal'"
+            )
 
         return data
