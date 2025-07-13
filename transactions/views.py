@@ -1,8 +1,10 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
-from rest_framework.parsers import MultiPartParser
-from .models import Transaction, ClassifiedTransaction
+from .models import (
+    Transaction, ClassifiedTransaction,
+    Company, BankAccount, CostCentre, TransactionType
+)
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
 import csv
 from io import TextIOWrapper
@@ -14,10 +16,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def classified_entries(self, request, pk=None):
-        """
-        Custom endpoint: /transactions/{id}/classified_entries/
-        Returns all classified (split) entries for this transaction.
-        """
         try:
             transaction = self.get_object()
         except Transaction.DoesNotExist:
@@ -33,9 +31,6 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'put', 'patch', 'delete']
 
     def get_queryset(self):
-        """
-        Filters classified transactions based on the 'transaction' query parameter if provided.
-        """
         queryset = ClassifiedTransaction.objects.all()
         transaction_id = self.request.query_params.get('transaction')
         if transaction_id:
@@ -45,7 +40,6 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data
 
-        # 1. Must receive a list of split rows
         if not isinstance(data, list) or len(data) == 0:
             return Response({"error": "Expected a non-empty list of split entries."},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -56,7 +50,6 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
         except Transaction.DoesNotExist:
             return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 2. Calculate total split amount
         total_split_amount = 0
         for entry in data:
             try:
@@ -71,10 +64,8 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 3. Delete existing classifications for this transaction
         ClassifiedTransaction.objects.filter(transaction=transaction).delete()
 
-        # 4. Save new splits
         serializer = self.get_serializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -82,13 +73,8 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# ✅ Bulk Upload View (POST + OPTIONS for CORS-safe)
 @api_view(["POST", "OPTIONS"])
 def bulk_upload_transactions(request):
-    """
-    Upload CSV file containing multiple transactions.
-    Each row must include: company, bank_account, cost_centre, transaction_type, direction, amount, date, notes
-    """
     if "file" not in request.FILES:
         return Response({"error": "CSV file is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -102,6 +88,41 @@ def bulk_upload_transactions(request):
         errors = []
 
         for row_number, row in enumerate(reader, start=1):
+            row_errors = {}
+
+            # Map names to PKs with error handling
+            try:
+                company = Company.objects.get(name__iexact=row["company"])
+                row["company"] = company.pk
+            except Company.DoesNotExist:
+                row_errors["company"] = f"Company '{row['company']}' not found."
+
+            try:
+                bank = BankAccount.objects.get(account_name__iexact=row["bank_account"])
+                row["bank_account"] = bank.pk
+            except BankAccount.DoesNotExist:
+                row_errors["bank_account"] = f"BankAccount '{row['bank_account']}' not found."
+
+            try:
+                cost_centre = CostCentre.objects.get(name__iexact=row["cost_centre"])
+                row["cost_centre"] = cost_centre.pk
+            except CostCentre.DoesNotExist:
+                row_errors["cost_centre"] = f"CostCentre '{row['cost_centre']}' not found."
+
+            try:
+                transaction_type = TransactionType.objects.get(name__iexact=row["transaction_type"])
+                row["transaction_type"] = transaction_type.pk
+            except TransactionType.DoesNotExist:
+                row_errors["transaction_type"] = f"TransactionType '{row['transaction_type']}' not found."
+
+            if row_errors:
+                errors.append({
+                    "row": row_number,
+                    "data": row,
+                    "errors": row_errors
+                })
+                continue
+
             serializer = TransactionSerializer(data=row)
             if serializer.is_valid():
                 transactions.append(serializer)
@@ -121,7 +142,9 @@ def bulk_upload_transactions(request):
         for serializer in transactions:
             serializer.save()
 
-        return Response({"message": f"{len(transactions)} transactions uploaded successfully."}, status=status.HTTP_201_CREATED)
+        return Response({
+            "message": f"{len(transactions)} transactions uploaded successfully."
+        }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
