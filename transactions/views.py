@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from .models import Transaction, ClassifiedTransaction
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
 
@@ -8,18 +9,62 @@ class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
 
+    @action(detail=True, methods=["get"])
+    def classified_entries(self, request, pk=None):
+        """
+        Custom endpoint: /transactions/{id}/classified_entries/
+        Returns all classified (split) entries for this transaction.
+        """
+        try:
+            transaction = self.get_object()
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        classified = ClassifiedTransaction.objects.filter(transaction=transaction)
+        serializer = ClassifiedTransactionSerializer(classified, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
     queryset = ClassifiedTransaction.objects.all()
     serializer_class = ClassifiedTransactionSerializer
-    http_method_names = ['get', 'post', 'put', 'patch', 'delete']  # Ensure POST is allowed
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
 
     def create(self, request, *args, **kwargs):
-        """Optional override to debug POST errors from React."""
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            self.perform_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            print("❌ ClassifiedTransaction Validation Errors:", serializer.errors)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data
+
+        # 1. Must receive a list of split rows
+        if not isinstance(data, list) or len(data) == 0:
+            return Response({"error": "Expected a non-empty list of split entries."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        transaction_id = data[0].get("transaction")
+        try:
+            transaction = Transaction.objects.get(id=transaction_id)
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 2. Calculate total split amount
+        total_split_amount = 0
+        for entry in data:
+            try:
+                total_split_amount += float(entry.get("amount", 0))
+            except Exception:
+                return Response({"error": "Invalid amount in one of the split entries."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        if float(transaction.amount) != total_split_amount:
+            return Response(
+                {"error": f"Split amount ({total_split_amount}) must equal the transaction amount ({transaction.amount})."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Delete existing classifications for this transaction
+        ClassifiedTransaction.objects.filter(transaction=transaction).delete()
+
+        # 4. Save new splits
+        serializer = self.get_serializer(data=data, many=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
