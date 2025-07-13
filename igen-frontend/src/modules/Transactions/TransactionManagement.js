@@ -1,4 +1,3 @@
-// ...imports stay unchanged
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import {
@@ -9,10 +8,13 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 export default function TransactionManagement() {
   const [transactions, setTransactions] = useState([]);
   const [open, setOpen] = useState(false);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [file, setFile] = useState(null);
   const [splitDialog, setSplitDialog] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [companies, setCompanies] = useState([]);
@@ -60,6 +62,30 @@ export default function TransactionManagement() {
       alert('Failed to fetch data');
     }
   };
+
+  const handleBulkUpload = async () => {
+    if (!file) {
+      alert('Please select a file');
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await API.post('bulk-upload/', formData, {
+
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      alert('Bulk upload successful');
+      setBulkDialogOpen(false);
+      setFile(null);
+      fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Bulk upload failed');
+    }
+  };
+
+  const handleFileChange = (e) => setFile(e.target.files[0]);
 
   const fetchClassifiedDetails = async (transactionId) => {
     try {
@@ -129,7 +155,7 @@ export default function TransactionManagement() {
 
     const totalSplitAmount = splitRows.reduce((sum, row) => sum + parseFloat(row.amount || 0), 0);
     if (totalSplitAmount !== parseFloat(selectedTransaction.amount)) {
-      alert('Split amount must equal the original transaction amount');
+      alert(`Split amount (${totalSplitAmount}) must equal the transaction amount (${selectedTransaction.amount})`);
       return;
     }
 
@@ -189,8 +215,23 @@ export default function TransactionManagement() {
     <div className="p-[95px]">
       <div className="flex justify-between items-center mb-6">
         <Typography variant="h5" fontWeight="bold">Transaction Management</Typography>
-        <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Transaction</Button>
+        <div className="flex gap-3">
+          <Button variant="contained" color="secondary" onClick={() => setBulkDialogOpen(true)} startIcon={<UploadFileIcon />}>Bulk Upload</Button>
+          <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Transaction</Button>
+        </div>
       </div>
+
+      {/* Bulk Upload Dialog */}
+      <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Bulk Upload Transactions</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleFileChange} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleBulkUpload} color="primary" variant="contained">Upload</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Add Transaction Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">

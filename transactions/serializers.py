@@ -5,8 +5,8 @@ from .models import Transaction, ClassifiedTransaction
 class TransactionSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     bank_name = serializers.CharField(source='bank_account.account_name', read_only=True)
-    cost_centre_name = serializers.CharField(source='cost_centre.name', read_only=True)  # FIXED
-    transaction_type_name = serializers.CharField(source='transaction_type.name', read_only=True)  # FIXED
+    cost_centre_name = serializers.CharField(source='cost_centre.name', read_only=True)
+    transaction_type_name = serializers.CharField(source='transaction_type.name', read_only=True)
     is_classified = serializers.SerializerMethodField()
 
     class Meta:
@@ -26,9 +26,9 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class ClassifiedTransactionSerializer(serializers.ModelSerializer):
-    cost_centre_name = serializers.CharField(source='cost_centre.name', read_only=True)  # FIXED
+    cost_centre_name = serializers.CharField(source='cost_centre.name', read_only=True)
     entity_name = serializers.CharField(source='entity.name', read_only=True)
-    transaction_type_name = serializers.CharField(source='transaction_type.name', read_only=True)  # FIXED
+    transaction_type_name = serializers.CharField(source='transaction_type.name', read_only=True)
     asset_name = serializers.CharField(source='asset.asset_name', read_only=True, default=None)
     contract_name = serializers.CharField(source='contract.contract_name', read_only=True, default=None)
 

@@ -1,8 +1,11 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
+from rest_framework.parsers import MultiPartParser
 from .models import Transaction, ClassifiedTransaction
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
+import csv
+from io import TextIOWrapper
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -77,3 +80,48 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ✅ Bulk Upload View (POST + OPTIONS for CORS-safe)
+@api_view(["POST", "OPTIONS"])
+def bulk_upload_transactions(request):
+    """
+    Upload CSV file containing multiple transactions.
+    Each row must include: company, bank_account, cost_centre, transaction_type, direction, amount, date, notes
+    """
+    if "file" not in request.FILES:
+        return Response({"error": "CSV file is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    csv_file = request.FILES["file"]
+
+    try:
+        decoded_file = TextIOWrapper(csv_file.file, encoding="utf-8")
+        reader = csv.DictReader(decoded_file)
+
+        transactions = []
+        errors = []
+
+        for row_number, row in enumerate(reader, start=1):
+            serializer = TransactionSerializer(data=row)
+            if serializer.is_valid():
+                transactions.append(serializer)
+            else:
+                errors.append({
+                    "row": row_number,
+                    "data": row,
+                    "errors": serializer.errors
+                })
+
+        if errors:
+            return Response({
+                "message": "Validation failed for some rows.",
+                "errors": errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        for serializer in transactions:
+            serializer.save()
+
+        return Response({"message": f"{len(transactions)} transactions uploaded successfully."}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
