@@ -26,9 +26,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
 
 class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
-    queryset = ClassifiedTransaction.objects.all()
     serializer_class = ClassifiedTransactionSerializer
     http_method_names = ['get', 'post', 'put', 'patch', 'delete']
+
+    def get_queryset(self):
+        """
+        Filters classified transactions based on the 'transaction' query parameter if provided.
+        """
+        queryset = ClassifiedTransaction.objects.all()
+        transaction_id = self.request.query_params.get('transaction')
+        if transaction_id:
+            queryset = queryset.filter(transaction__id=transaction_id)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         data = request.data
