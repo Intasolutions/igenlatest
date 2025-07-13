@@ -20,7 +20,7 @@ INSTALLED_APPS = [
 
     # Existing apps
     
-    
+    'django_extensions',
     'banks',
     'cost_centres',
     'transaction_types',

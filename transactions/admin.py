@@ -1,9 +1,5 @@
 from django.contrib import admin
-from .models import Transaction
+from .models import Transaction, ClassifiedTransaction
 
-class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['company', 'direction', 'amount', 'date', 'transaction_type', 'cost_centre', 'bank_account', 'created_at']
-    search_fields = ['notes']
-    list_filter = ['company', 'direction', 'transaction_type', 'cost_centre', 'bank_account']
-
-admin.site.register(Transaction, TransactionAdmin)
+admin.site.register(Transaction)
+admin.site.register(ClassifiedTransaction)

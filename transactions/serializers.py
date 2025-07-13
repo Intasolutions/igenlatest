@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Transaction, ClassifiedTransaction
 
+
 class TransactionSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     bank_name = serializers.CharField(source='bank_account.account_name', read_only=True)
@@ -10,14 +11,28 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            'id', 'company', 'company_name',
+            'id',
+            'company', 'company_name',
             'bank_account', 'bank_name',
             'cost_centre', 'cost_centre_name',
             'transaction_type', 'transaction_type_name',
             'direction', 'amount', 'date', 'notes', 'created_at'
         ]
 
+
 class ClassifiedTransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassifiedTransaction
-        fields = '__all__'
+        fields = [
+            'id',
+            'transaction',
+            'cost_centre',
+            'entity',
+            'transaction_type',
+            'asset',
+            'contract',
+            'amount',
+            'value_date',
+            'remarks',
+            'created_at'
+        ]

@@ -1,23 +1,25 @@
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, status
+from rest_framework.response import Response
 from .models import Transaction, ClassifiedTransaction
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
-from users.permissions import IsSuperUser
+
 
 class TransactionViewSet(viewsets.ModelViewSet):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
-    permission_classes = [IsSuperUser]
 
 
 class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
     queryset = ClassifiedTransaction.objects.all()
     serializer_class = ClassifiedTransactionSerializer
-    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']  # Ensure POST is allowed
 
-    def perform_create(self, serializer):
-        transaction = serializer.validated_data['transaction']
-        if not ClassifiedTransaction.objects.filter(transaction=transaction).exists():
-            # Optional: Flag transaction if supporting field exists
-            pass  # You can mark parent inactive here if modeled
-        serializer.save()
+    def create(self, request, *args, **kwargs):
+        """Optional override to debug POST errors from React."""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print("❌ ClassifiedTransaction Validation Errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

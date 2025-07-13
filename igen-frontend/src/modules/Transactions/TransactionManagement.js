@@ -27,10 +27,9 @@ export default function TransactionManagement() {
     direction: 'CREDIT', amount: '', date: '', notes: ''
   });
 
-  const [splitRows, setSplitRows] = useState([{
-    cost_centre: '', entity: '', transaction_type: '', asset: '', contract: '',
-    amount: '', value_date: '', remarks: ''
-  }]);
+  const [splitRows, setSplitRows] = useState([
+    { cost_centre: '', entity: '', transaction_type: '', asset: '', contract: '', amount: '', value_date: '', remarks: '' }
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -100,27 +99,51 @@ export default function TransactionManagement() {
   };
 
   const handleSubmitSplit = async () => {
+    if (!selectedTransaction) {
+      alert("No transaction selected");
+      return;
+    }
+
     const totalSplitAmount = splitRows.reduce((sum, row) => sum + parseFloat(row.amount || 0), 0);
     if (totalSplitAmount !== parseFloat(selectedTransaction.amount)) {
       alert('Split amount must equal the original transaction amount');
       return;
     }
+
     try {
       for (const row of splitRows) {
-        await API.post('transactions/classified/', {
-  ...row,
-  transaction: selectedTransaction.id,
-  amount: parseFloat(row.amount),
-});
+        const payload = {
+          cost_centre: row.cost_centre,
+          entity: row.entity,
+          transaction_type: row.transaction_type,
+          amount: parseFloat(row.amount),
+          value_date: row.value_date,
+          remarks: row.remarks,
+          transaction: selectedTransaction.id,
+        };
 
+        // Only include asset and contract if non-empty
+        if (row.asset) payload.asset = row.asset;
+        if (row.contract) payload.contract = row.contract;
+
+        await API.post('transactions/classified/', payload);
       }
+
       alert('Split saved');
       setSplitDialog(false);
+      setSelectedTransaction(null);
+      setSplitRows([{ cost_centre: '', entity: '', transaction_type: '', asset: '', contract: '', amount: '', value_date: '', remarks: '' }]);
       fetchData();
     } catch (err) {
       console.error(err);
       alert('Failed to save split');
     }
+  };
+
+  const handleOpenSplitDialog = (transaction) => {
+    setSelectedTransaction(transaction);
+    setSplitRows([{ cost_centre: '', entity: '', transaction_type: '', asset: '', contract: '', amount: '', value_date: '', remarks: '' }]);
+    setSplitDialog(true);
   };
 
   const handleChangePage = (event, newPage) => setPage(newPage);
@@ -129,7 +152,9 @@ export default function TransactionManagement() {
     setPage(0);
   };
 
-  const paginatedData = rowsPerPage > 0 ? transactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : transactions;
+  const paginatedData = rowsPerPage > 0
+    ? transactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+    : transactions;
 
   return (
     <div className="p-[95px]">
@@ -138,27 +163,28 @@ export default function TransactionManagement() {
         <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Transaction</Button>
       </div>
 
+      {/* Add Transaction Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Transaction</DialogTitle>
         <DialogContent>
           <TextField select label="Company" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} fullWidth margin="dense">
-            {companies.map((c) => <MenuItem key={c?.id} value={String(c?.id)}>{c?.name}</MenuItem>)}
+            {companies.map((c) => <MenuItem key={c.id} value={String(c.id)}>{c.name}</MenuItem>)}
           </TextField>
           <TextField select label="Bank Account" value={form.bank_account} onChange={(e) => setForm({ ...form, bank_account: e.target.value })} fullWidth margin="dense">
-            {banks.map((b) => <MenuItem key={b?.id} value={String(b?.id)}>{b?.account_name}</MenuItem>)}
+            {banks.map((b) => <MenuItem key={b.id} value={String(b.id)}>{b.account_name}</MenuItem>)}
           </TextField>
           <TextField select label="Cost Centre" value={form.cost_centre} onChange={(e) => setForm({ ...form, cost_centre: e.target.value })} fullWidth margin="dense">
-            {costCentres.map((cc) => <MenuItem key={cc.cost_centre_id || cc.id} value={cc.cost_centre_id || cc.id}>{cc.name}</MenuItem>)}
+            {costCentres.map((cc) => <MenuItem key={cc.id || cc.cost_centre_id} value={cc.id || cc.cost_centre_id}>{cc.name}</MenuItem>)}
           </TextField>
           <TextField select label="Transaction Type" value={form.transaction_type} onChange={(e) => setForm({ ...form, transaction_type: e.target.value })} fullWidth margin="dense">
-            {transactionTypes.map((tt) => <MenuItem key={tt.transaction_type_id || tt.id} value={tt.transaction_type_id || tt.id}>{tt.name}</MenuItem>)}
+            {transactionTypes.map((tt) => <MenuItem key={tt.id || tt.transaction_type_id} value={tt.id || tt.transaction_type_id}>{tt.name}</MenuItem>)}
           </TextField>
           <TextField select label="Direction" value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value })} fullWidth margin="dense">
             <MenuItem value="CREDIT">CREDIT</MenuItem>
             <MenuItem value="DEBIT">DEBIT</MenuItem>
           </TextField>
           <TextField label="Amount" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} fullWidth margin="dense" />
-          <TextField label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} fullWidth margin="dense" InputLabelProps={{ shrink: true }} />
+          <TextField label="Date" type="date" InputLabelProps={{ shrink: true }} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} fullWidth margin="dense" />
           <TextField label="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} fullWidth margin="dense" />
         </DialogContent>
         <DialogActions>
@@ -167,25 +193,20 @@ export default function TransactionManagement() {
         </DialogActions>
       </Dialog>
 
+      {/* Split Dialog */}
       <Dialog open={splitDialog} onClose={() => setSplitDialog(false)} fullWidth maxWidth="md">
         <DialogTitle>Split Transaction</DialogTitle>
         <DialogContent>
           {splitRows.map((row, index) => (
             <div key={index} className="grid grid-cols-3 gap-3 mb-3">
               <TextField select label="Cost Centre" value={row.cost_centre} onChange={(e) => handleSplitChange(index, 'cost_centre', e.target.value)} fullWidth>
-                {costCentres.map((cc) => (
-                  <MenuItem key={cc.cost_centre_id || cc.id} value={cc.cost_centre_id || cc.id}>{cc.name}</MenuItem>
-                ))}
+                {costCentres.map((cc) => <MenuItem key={cc.id || cc.cost_centre_id} value={cc.id || cc.cost_centre_id}>{cc.name}</MenuItem>)}
               </TextField>
               <TextField select label="Entity" value={row.entity} onChange={(e) => handleSplitChange(index, 'entity', e.target.value)} fullWidth>
-                {entities.map((ent) => (
-                  <MenuItem key={ent.id} value={ent.id}>{ent.name}</MenuItem>
-                ))}
+                {entities.map((ent) => <MenuItem key={ent.id} value={ent.id}>{ent.name}</MenuItem>)}
               </TextField>
               <TextField select label="Transaction Type" value={row.transaction_type} onChange={(e) => handleSplitChange(index, 'transaction_type', e.target.value)} fullWidth>
-                {transactionTypes.map((tt) => (
-                  <MenuItem key={tt.transaction_type_id || tt.id} value={tt.transaction_type_id || tt.id}>{tt.name}</MenuItem>
-                ))}
+                {transactionTypes.map((tt) => <MenuItem key={tt.id || tt.transaction_type_id} value={tt.id || tt.transaction_type_id}>{tt.name}</MenuItem>)}
               </TextField>
               <TextField label="Amount" type="number" value={row.amount} onChange={(e) => handleSplitChange(index, 'amount', e.target.value)} fullWidth />
               <TextField label="Value Date" type="date" InputLabelProps={{ shrink: true }} value={row.value_date} onChange={(e) => handleSplitChange(index, 'value_date', e.target.value)} fullWidth />
@@ -200,6 +221,7 @@ export default function TransactionManagement() {
         </DialogActions>
       </Dialog>
 
+      {/* Table */}
       <Card sx={{ boxShadow: 3, borderRadius: 3, mt: 2 }}>
         <CardContent>
           <TableContainer component={Paper}>
@@ -232,7 +254,7 @@ export default function TransactionManagement() {
                     <TableCell>{t.notes}</TableCell>
                     <TableCell align="center">
                       <Tooltip title="Split Transaction">
-                        <IconButton color="primary" onClick={() => { setSelectedTransaction(t); setSplitDialog(true); }}>
+                        <IconButton color="primary" onClick={() => handleOpenSplitDialog(t)}>
                           <AddIcon />
                         </IconButton>
                       </Tooltip>
