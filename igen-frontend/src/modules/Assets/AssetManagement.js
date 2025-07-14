@@ -1,4 +1,3 @@
-// src/modules/Assets/AssetManagement.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -11,14 +10,17 @@ import {
   TableHead,
   TableRow,
   Typography,
+  CircularProgress,
 } from '@mui/material';
 import AddAssetDialog from './AddAssetDialog';
 
 export default function AssetManagement() {
   const [assets, setAssets] = useState([]);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const fetchAssets = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('access');
       const response = await axios.get(
@@ -30,6 +32,8 @@ export default function AssetManagement() {
       setAssets(response.data);
     } catch (error) {
       console.error('Failed to fetch assets:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -39,7 +43,7 @@ export default function AssetManagement() {
 
   const handleAddSuccess = () => {
     setOpen(false);
-    fetchAssets(); // Refresh assets after adding
+    fetchAssets();
   };
 
   return (
@@ -57,43 +61,51 @@ export default function AssetManagement() {
         Add Asset
       </Button>
 
-      <AddAssetDialog open={open} onClose={() => setOpen(false)} onSuccess={handleAddSuccess} />
+      <AddAssetDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onSuccess={handleAddSuccess}
+      />
 
       <TableContainer component={Paper}>
-        <Table>
-          <TableHead sx={{ backgroundColor: '#003B99' }}>
-            <TableRow>
-              <TableCell sx={{ color: '#fff' }}>ID</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Name</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Category</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Location</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Purchase Date</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Maintenance Frequency</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {assets.length > 0 ? (
-              assets.map((asset) => (
-                <TableRow key={asset.id}>
-                  <TableCell>{asset.id}</TableCell>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>{asset.category}</TableCell>
-                  <TableCell>{asset.location}</TableCell>
-                  <TableCell>{asset.purchase_date}</TableCell>
-                  <TableCell>{asset.maintenance_frequency}</TableCell>
-                  <TableCell>Coming soon</TableCell>
-                </TableRow>
-              ))
-            ) : (
+        {loading ? (
+          <div style={{ padding: 20, textAlign: 'center' }}>
+            <CircularProgress />
+          </div>
+        ) : (
+          <Table>
+            <TableHead sx={{ backgroundColor: '#003B99' }}>
               <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No assets found.
-                </TableCell>
+                <TableCell sx={{ color: '#fff' }}>ID</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Name</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Tag ID</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Company</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Property</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Project</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {assets.length > 0 ? (
+                assets.map((asset) => (
+                  <TableRow key={asset.asset_id}>
+                    <TableCell>{asset.asset_id}</TableCell>
+                    <TableCell>{asset.asset_name}</TableCell>
+                    <TableCell>{asset.tag_id}</TableCell>
+                    <TableCell>{asset.company?.name || 'N/A'}</TableCell>
+                    <TableCell>{asset.property?.name || '-'}</TableCell>
+                    <TableCell>{asset.project?.name || '-'}</TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No assets found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </TableContainer>
     </div>
   );

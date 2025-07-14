@@ -1,100 +1,154 @@
-// src/modules/Assets/AssetManagement.js
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import API from '../../api/axios';
 import {
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Button, Grid, MenuItem, Typography, Snackbar, Alert
 } from '@mui/material';
-import AddAssetDialog from './AddAssetDialog';
 
-export default function AssetManagement() {
-  const [assets, setAssets] = useState([]);
-  const [open, setOpen] = useState(false);
+export default function AddAssetDialog({ open, onClose, onSuccess }) {
+  const [companies, setCompanies] = useState([]);
+  const [properties, setProperties] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
-  const fetchAssets = async () => {
+  const [formData, setFormData] = useState({
+    company_id: '',
+    property_id: '',
+    project_id: '',
+    asset_name: '',
+    tag_id: '',
+    service_schedule: [{ service_due_date: '', description: '' }]
+  });
+
+  useEffect(() => {
+    if (open) {
+      fetchDropdownData();
+    }
+  }, [open]);
+
+  const fetchDropdownData = async () => {
     try {
-      const token = localStorage.getItem('access');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/api/assets/`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setAssets(response.data);
-    } catch (error) {
-      console.error('Failed to fetch assets:', error);
+      const [companyRes, propertyRes, projectRes] = await Promise.all([
+        API.get('companies/'),
+        API.get('properties/'),
+        API.get('projects/')
+      ]);
+
+      setCompanies(Array.isArray(companyRes.data) ? companyRes.data : []);
+      setProperties(Array.isArray(propertyRes.data) ? propertyRes.data : []);
+      setProjects(Array.isArray(projectRes.data) ? projectRes.data : []);
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to load dropdowns', severity: 'error' });
     }
   };
 
-  useEffect(() => {
-    fetchAssets();
-  }, []);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  const handleAddSuccess = () => {
-    setOpen(false);
-    fetchAssets(); // Refresh assets after adding
+  const handleScheduleChange = (index, field, value) => {
+    const updatedSchedule = [...formData.service_schedule];
+    updatedSchedule[index][field] = value;
+    setFormData({ ...formData, service_schedule: updatedSchedule });
+  };
+
+  const addServiceDate = () => {
+    setFormData({
+      ...formData,
+      service_schedule: [...formData.service_schedule, { service_due_date: '', description: '' }]
+    });
+  };
+
+  const removeServiceDate = (index) => {
+    const updated = formData.service_schedule.filter((_, i) => i !== index);
+    setFormData({ ...formData, service_schedule: updated });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      await API.post('assets/', formData);
+      setSnackbar({ open: true, message: 'Asset created successfully', severity: 'success' });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setSnackbar({ open: true, message: 'Failed to save asset', severity: 'error' });
+    }
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <Typography variant="h5" gutterBottom>
-        Asset Management
-      </Typography>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Add Asset</DialogTitle>
+      <DialogContent dividers>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField select fullWidth label="Company" name="company_id" value={formData.company_id} onChange={handleChange}>
+              <MenuItem value="">Select</MenuItem>
+              {companies.map(c => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => setOpen(true)}
-        sx={{ mb: 2 }}
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField select fullWidth label="Property" name="property_id" value={formData.property_id} onChange={handleChange}>
+              <MenuItem value="">Select</MenuItem>
+              {properties.map(p => (
+                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <TextField select fullWidth label="Project" name="project_id" value={formData.project_id} onChange={handleChange}>
+              <MenuItem value="">Select</MenuItem>
+              {projects.map(p => (
+                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth label="Asset Name" name="asset_name" value={formData.asset_name} onChange={handleChange} />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField fullWidth label="Tag ID / Serial Number" name="tag_id" value={formData.tag_id} onChange={handleChange} />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" sx={{ mt: 2 }}>Service Due Dates</Typography>
+          </Grid>
+
+          {formData.service_schedule.map((entry, index) => (
+            <React.Fragment key={index}>
+              <Grid item xs={6}>
+                <TextField type="date" label="Due Date" fullWidth InputLabelProps={{ shrink: true }} value={entry.service_due_date} onChange={(e) => handleScheduleChange(index, 'service_due_date', e.target.value)} />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField fullWidth label="Description" value={entry.description} onChange={(e) => handleScheduleChange(index, 'description', e.target.value)} />
+              </Grid>
+            </React.Fragment>
+          ))}
+
+          <Grid item xs={12}>
+            <Button onClick={addServiceDate}>Add Date</Button>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" onClick={handleSubmit}>Save</Button>
+      </DialogActions>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        Add Asset
-      </Button>
-
-      <AddAssetDialog open={open} onClose={() => setOpen(false)} onSuccess={handleAddSuccess} />
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead sx={{ backgroundColor: '#003B99' }}>
-            <TableRow>
-              <TableCell sx={{ color: '#fff' }}>ID</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Name</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Category</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Location</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Purchase Date</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Maintenance Frequency</TableCell>
-              <TableCell sx={{ color: '#fff' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {assets.length > 0 ? (
-              assets.map((asset) => (
-                <TableRow key={asset.id}>
-                  <TableCell>{asset.id}</TableCell>
-                  <TableCell>{asset.name}</TableCell>
-                  <TableCell>{asset.category}</TableCell>
-                  <TableCell>{asset.location}</TableCell>
-                  <TableCell>{asset.purchase_date}</TableCell>
-                  <TableCell>{asset.maintenance_frequency}</TableCell>
-                  <TableCell>Coming soon</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No assets found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </div>
+        <Alert severity={snackbar.severity} variant="filled">{snackbar.message}</Alert>
+      </Snackbar>
+    </Dialog>
   );
 }

@@ -12,7 +12,7 @@ import ProjectManagement from './modules/Projects/ProjectManagement';
 import PropertyManagement from './modules/Properties/PropertyManagement';
 import EntityManagement from './modules/Entities/EntityManagement';
 import ReceiptManagement from './modules/Receipts/ReceiptManagement';
-import AssetManagement from './modules/Assets/AssetManagement';
+import AssetManagement from './modules/Assets/AssetManagement'; // ✅ This is correct
 
 import ProtectedRoute from './routes/ProtectedRoute';
 import Sidebar from './components/Slidebar';
@@ -27,8 +27,9 @@ function AppContent() {
 
       <div style={{
         flexGrow: 1,
-        backgroundColor: '	#F9FAFB',
+        backgroundColor: '#F9FAFB',
         minHeight: '100vh',
+        padding: '20px',
       }}>
         <Routes>
           <Route path="/" element={<Login />} />
