@@ -24,6 +24,7 @@ class Asset(models.Model):
     location = models.CharField(max_length=255, help_text="Physical location of the asset")
     maintenance_frequency = models.CharField(max_length=255, help_text="Frequency of maintenance (e.g., monthly)")
     notes = models.TextField(blank=True, help_text="Additional notes about the asset")
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when asset was created")
 
     def __str__(self):

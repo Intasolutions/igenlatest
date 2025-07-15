@@ -11,13 +11,18 @@ import {
   TableRow,
   Typography,
   CircularProgress,
+  IconButton,
+  Tooltip
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AddAssetDialog from './AddAssetDialog';
 
 export default function AssetManagement() {
   const [assets, setAssets] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editAsset, setEditAsset] = useState(null); // ✅ Edit mode support
 
   const fetchAssets = async () => {
     setLoading(true);
@@ -29,7 +34,9 @@ export default function AssetManagement() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      setAssets(response.data);
+      // Filter only active assets
+      const activeAssets = response.data.filter(asset => asset.is_active !== false);
+      setAssets(activeAssets);
     } catch (error) {
       console.error('Failed to fetch assets:', error);
     } finally {
@@ -43,7 +50,27 @@ export default function AssetManagement() {
 
   const handleAddSuccess = () => {
     setOpen(false);
+    setEditAsset(null);
     fetchAssets();
+  };
+
+  const handleEdit = (asset) => {
+    setEditAsset(asset);
+    setOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem('access');
+      await axios.patch(`${process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'}/api/assets/${id}/`, {
+        is_active: false
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchAssets();
+    } catch (error) {
+      console.error('Failed to deactivate asset:', error);
+    }
   };
 
   return (
@@ -55,7 +82,10 @@ export default function AssetManagement() {
       <Button
         variant="contained"
         color="primary"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setEditAsset(null);
+          setOpen(true);
+        }}
         sx={{ mb: 2 }}
       >
         Add Asset
@@ -63,8 +93,12 @@ export default function AssetManagement() {
 
       <AddAssetDialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          setEditAsset(null);
+        }}
         onSuccess={handleAddSuccess}
+        initialData={editAsset} // Pass data for edit mode
       />
 
       <TableContainer component={Paper}>
@@ -82,24 +116,37 @@ export default function AssetManagement() {
                 <TableCell sx={{ color: '#fff' }}>Company</TableCell>
                 <TableCell sx={{ color: '#fff' }}>Property</TableCell>
                 <TableCell sx={{ color: '#fff' }}>Project</TableCell>
+                <TableCell sx={{ color: '#fff' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {assets.length > 0 ? (
                 assets.map((asset) => (
-                  <TableRow key={asset.asset_id}>
-                    <TableCell>{asset.asset_id}</TableCell>
-                    <TableCell>{asset.asset_name}</TableCell>
-                    <TableCell>{asset.tag_id}</TableCell>
-                    <TableCell>{asset.company?.name || 'N/A'}</TableCell>
-                    <TableCell>{asset.property?.name || '-'}</TableCell>
-                    <TableCell>{asset.project?.name || '-'}</TableCell>
+                  <TableRow key={asset.id}>
+                    <TableCell>{asset.id}</TableCell>
+                    <TableCell>{asset.name}</TableCell>
+                    <TableCell>{asset.tag_id || 'N/A'}</TableCell>
+                    <TableCell>{asset.company_name || 'N/A'}</TableCell>
+                    <TableCell>{asset.property_name || '-'}</TableCell>
+                    <TableCell>{asset.project_name || '-'}</TableCell>
+                    <TableCell>
+                      <Tooltip title="Edit">
+                        <IconButton onClick={() => handleEdit(asset)}>
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Deactivate">
+                        <IconButton onClick={() => handleDelete(asset.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No assets found.
+                  <TableCell colSpan={7} align="center">
+                    No active assets found.
                   </TableCell>
                 </TableRow>
               )}

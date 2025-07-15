@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import API from '../../api/axios';
 import {
@@ -22,9 +23,7 @@ export default function ProjectManagement() {
     try {
       const res = await API.get('projects/');
       console.log('Fetched projects:', res.data); // Debug log
-      // Ensure res.data is always an array
-      setProjects(res.data.results || []);
-
+      setProjects(Array.isArray(res.data) ? res.data : res.data.results || []);
     } catch (err) {
       console.error('Error fetching projects:', err.response?.data || err);
       alert('Error fetching projects');
@@ -35,7 +34,6 @@ export default function ProjectManagement() {
     fetchProjects();
   }, []);
 
-  // Add a new project manually
   const handleAddProject = async () => {
     if (!form.name || !form.start_date) {
       alert('Name and Start Date are required');
@@ -59,7 +57,6 @@ export default function ProjectManagement() {
     }
   };
 
-  // Bulk upload CSV handler
   const handleUploadCSV = async () => {
     if (!csvFile) {
       alert('Please choose a CSV file first');
@@ -72,7 +69,6 @@ export default function ProjectManagement() {
       const res = await API.post('projects/bulk_upload/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      console.log('Bulk upload response:', res.data);
       setBulkResults(res.data.results);
       alert('Bulk upload complete');
       fetchProjects();
@@ -82,7 +78,6 @@ export default function ProjectManagement() {
     }
   };
 
-  // Delete a project
   const deleteProject = async (id) => {
     if (!window.confirm('Are you sure you want to delete this project?')) return;
     try {
@@ -118,30 +113,14 @@ export default function ProjectManagement() {
         Upload CSV
       </Button>
 
-      {/* Add project modal */}
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Add New Project</DialogTitle>
         <DialogContent>
-          <TextField
-            margin="dense" label="Name" fullWidth value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          <TextField
-            margin="dense" label="Start Date (YYYY-MM-DD)" fullWidth value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-          />
-          <TextField
-            margin="dense" label="End Date (YYYY-MM-DD)" fullWidth value={form.end_date}
-            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-          />
-          <TextField
-            margin="dense" label="Stakeholders" fullWidth value={form.stakeholders}
-            onChange={(e) => setForm({ ...form, stakeholders: e.target.value })}
-          />
-          <TextField
-            margin="dense" label="Expected Return" type="number" fullWidth value={form.expected_return}
-            onChange={(e) => setForm({ ...form, expected_return: e.target.value })}
-          />
+          <TextField margin="dense" label="Name" fullWidth value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <TextField margin="dense" label="Start Date (YYYY-MM-DD)" fullWidth value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+          <TextField margin="dense" label="End Date (YYYY-MM-DD)" fullWidth value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+          <TextField margin="dense" label="Stakeholders" fullWidth value={form.stakeholders} onChange={(e) => setForm({ ...form, stakeholders: e.target.value })} />
+          <TextField margin="dense" label="Expected Return" type="number" fullWidth value={form.expected_return} onChange={(e) => setForm({ ...form, expected_return: e.target.value })} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
@@ -149,7 +128,6 @@ export default function ProjectManagement() {
         </DialogActions>
       </Dialog>
 
-      {/* Projects Table */}
       <table border="1" style={{ marginTop: 20, width: '100%' }}>
         <thead>
           <tr>
@@ -162,7 +140,7 @@ export default function ProjectManagement() {
           </tr>
         </thead>
         <tbody>
-          {Array.isArray(projects) && projects.length > 0 ? (
+          {projects.length > 0 ? (
             projects.map((p) => (
               <tr key={p.id}>
                 <td>{p.name}</td>
@@ -182,31 +160,6 @@ export default function ProjectManagement() {
           )}
         </tbody>
       </table>
-
-      {/* Bulk Upload Results */}
-      {bulkResults.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          <h4>Bulk Upload Results</h4>
-          <table border="1" width="100%">
-            <thead>
-              <tr>
-                <th>Row</th>
-                <th>Status</th>
-                <th>Errors</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bulkResults.map((r, idx) => (
-                <tr key={idx}>
-                  <td>{r.row}</td>
-                  <td>{r.status}</td>
-                  <td>{r.errors ? JSON.stringify(r.errors) : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }

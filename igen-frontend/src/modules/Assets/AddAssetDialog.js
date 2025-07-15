@@ -12,18 +12,22 @@ export default function AddAssetDialog({ open, onClose, onSuccess }) {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const [formData, setFormData] = useState({
-    company_id: '',
-    property_id: '',
-    project_id: '',
-    asset_name: '',
-    tag_id: '',
-    service_schedule: [{ service_due_date: '', description: '' }]
+    company: '',
+    property: '',
+    project: '',
+    name: '',
+    category: '',
+    purchase_date: '',
+    purchase_price: '',
+    warranty_expiry: '',
+    location: '',
+    maintenance_frequency: '',
+    notes: '',
+    service_schedule: [{ due_date: '', description: '' }]
   });
 
   useEffect(() => {
-    if (open) {
-      fetchDropdownData();
-    }
+    if (open) fetchDropdownData();
   }, [open]);
 
   const fetchDropdownData = async () => {
@@ -38,6 +42,7 @@ export default function AddAssetDialog({ open, onClose, onSuccess }) {
       setProperties(Array.isArray(propertyRes.data) ? propertyRes.data : []);
       setProjects(Array.isArray(projectRes.data) ? projectRes.data : []);
     } catch (err) {
+      console.error("Dropdown fetch failed:", err);
       setSnackbar({ open: true, message: 'Failed to load dropdowns', severity: 'error' });
     }
   };
@@ -47,31 +52,30 @@ export default function AddAssetDialog({ open, onClose, onSuccess }) {
   };
 
   const handleScheduleChange = (index, field, value) => {
-    const updatedSchedule = [...formData.service_schedule];
-    updatedSchedule[index][field] = value;
-    setFormData({ ...formData, service_schedule: updatedSchedule });
+    const updated = [...formData.service_schedule];
+    updated[index][field] = value;
+    setFormData({ ...formData, service_schedule: updated });
   };
 
   const addServiceDate = () => {
     setFormData({
       ...formData,
-      service_schedule: [...formData.service_schedule, { service_due_date: '', description: '' }]
+      service_schedule: [...formData.service_schedule, { due_date: '', description: '' }]
     });
-  };
-
-  const removeServiceDate = (index) => {
-    const updated = formData.service_schedule.filter((_, i) => i !== index);
-    setFormData({ ...formData, service_schedule: updated });
   };
 
   const handleSubmit = async () => {
     try {
-      await API.post('assets/', formData);
+      const payload = { ...formData };
+      payload.service_dues = formData.service_schedule;
+      delete payload.service_schedule;
+
+      await API.post('assets/', payload);
       setSnackbar({ open: true, message: 'Asset created successfully', severity: 'success' });
       onSuccess();
       onClose();
     } catch (err) {
-      console.error(err);
+      console.error("Submit error:", err.response?.data || err.message);
       setSnackbar({ open: true, message: 'Failed to save asset', severity: 'error' });
     }
   };
@@ -81,49 +85,61 @@ export default function AddAssetDialog({ open, onClose, onSuccess }) {
       <DialogTitle>Add Asset</DialogTitle>
       <DialogContent dividers>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField select fullWidth label="Company" name="company_id" value={formData.company_id} onChange={handleChange}>
+          <Grid item xs={12} sm={4}>
+            <TextField select fullWidth label="Company" name="company" value={formData.company} onChange={handleChange}>
               <MenuItem value="">Select</MenuItem>
-              {companies.map(c => (
-                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-              ))}
+              {companies.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField select fullWidth label="Property" name="property" value={formData.property} onChange={handleChange}>
+              <MenuItem value="">Select</MenuItem>
+              {properties.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField select fullWidth label="Project" name="project" value={formData.project} onChange={handleChange}>
+              <MenuItem value="">Select</MenuItem>
+              {projects.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </TextField>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField select fullWidth label="Property" name="property_id" value={formData.property_id} onChange={handleChange}>
-              <MenuItem value="">Select</MenuItem>
-              {properties.map(p => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-              ))}
-            </TextField>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Asset Name" name="name" value={formData.name} onChange={handleChange} />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Category" name="category" value={formData.category} onChange={handleChange} />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={4}>
-            <TextField select fullWidth label="Project" name="project_id" value={formData.project_id} onChange={handleChange}>
-              <MenuItem value="">Select</MenuItem>
-              {projects.map(p => (
-                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-              ))}
-            </TextField>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Purchase Date" name="purchase_date" type="date" value={formData.purchase_date} InputLabelProps={{ shrink: true }} onChange={handleChange} />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Purchase Price" name="purchase_price" value={formData.purchase_price} onChange={handleChange} />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <TextField fullWidth label="Asset Name" name="asset_name" value={formData.asset_name} onChange={handleChange} />
+          <Grid item xs={6}>
+            <TextField fullWidth label="Warranty Expiry" name="warranty_expiry" type="date" value={formData.warranty_expiry} InputLabelProps={{ shrink: true }} onChange={handleChange} />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Location" name="location" value={formData.location} onChange={handleChange} />
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <TextField fullWidth label="Tag ID / Serial Number" name="tag_id" value={formData.tag_id} onChange={handleChange} />
+          <Grid item xs={6}>
+            <TextField fullWidth label="Maintenance Frequency" name="maintenance_frequency" value={formData.maintenance_frequency} onChange={handleChange} />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField fullWidth label="Notes" name="notes" multiline rows={2} value={formData.notes} onChange={handleChange} />
           </Grid>
 
           <Grid item xs={12}>
-            <Typography variant="subtitle1" sx={{ mt: 2 }}>Service Due Dates</Typography>
+            <Typography variant="subtitle1">Service Due Dates</Typography>
           </Grid>
 
           {formData.service_schedule.map((entry, index) => (
             <React.Fragment key={index}>
               <Grid item xs={6}>
-                <TextField type="date" label="Due Date" fullWidth InputLabelProps={{ shrink: true }} value={entry.service_due_date} onChange={(e) => handleScheduleChange(index, 'service_due_date', e.target.value)} />
+                <TextField type="date" fullWidth label="Due Date" InputLabelProps={{ shrink: true }} value={entry.due_date} onChange={(e) => handleScheduleChange(index, 'due_date', e.target.value)} />
               </Grid>
               <Grid item xs={6}>
                 <TextField fullWidth label="Description" value={entry.description} onChange={(e) => handleScheduleChange(index, 'description', e.target.value)} />
@@ -136,6 +152,7 @@ export default function AddAssetDialog({ open, onClose, onSuccess }) {
           </Grid>
         </Grid>
       </DialogContent>
+
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={handleSubmit}>Save</Button>

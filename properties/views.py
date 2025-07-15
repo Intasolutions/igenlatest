@@ -5,11 +5,13 @@ from rest_framework.response import Response
 from .models import Property, PropertyDocument, PropertyKeyDate
 from .serializers import PropertySerializer, PropertyDocumentSerializer, PropertyKeyDateSerializer
 from users.permissions import IsSuperUser
+from rest_framework.permissions import IsAuthenticated
+
 
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all().prefetch_related('documents', 'key_dates')
     serializer_class = PropertySerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
@@ -24,9 +26,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
 class PropertyDocumentViewSet(viewsets.ModelViewSet):
     queryset = PropertyDocument.objects.all()
     serializer_class = PropertyDocumentSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
 
 class PropertyKeyDateViewSet(viewsets.ModelViewSet):
     queryset = PropertyKeyDate.objects.all()
     serializer_class = PropertyKeyDateSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]
