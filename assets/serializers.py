@@ -1,21 +1,26 @@
 from rest_framework import serializers
 from .models import Asset, AssetDocument, AssetServiceDue
 
+
 class AssetServiceDueSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetServiceDue
-        fields = '__all__'
+        fields = ['id', 'due_date', 'description']  # Only needed fields
+
 
 class AssetDocumentSerializer(serializers.ModelSerializer):
+    document = serializers.FileField(use_url=True)
+
     class Meta:
         model = AssetDocument
-        fields = '__all__'
+        fields = ['id', 'document']  # ✅ Correct field name from the model
+
 
 class AssetSerializer(serializers.ModelSerializer):
     service_dues = AssetServiceDueSerializer(many=True, read_only=True)
     documents = AssetDocumentSerializer(many=True, read_only=True)
 
-    # Extra fields for frontend display
+    # Extra fields for frontend readability
     company_name = serializers.CharField(source='company.name', read_only=True)
     property_name = serializers.CharField(source='property.name', read_only=True)
     project_name = serializers.CharField(source='project.name', read_only=True)
@@ -28,6 +33,7 @@ class AssetSerializer(serializers.ModelSerializer):
             'property',
             'project',
             'name',
+            'tag_id',
             'category',
             'purchase_date',
             'purchase_price',
@@ -35,11 +41,10 @@ class AssetSerializer(serializers.ModelSerializer):
             'location',
             'maintenance_frequency',
             'notes',
+            'is_active',
             'created_at',
             'documents',
             'service_dues',
-
-            # Extra readable names
             'company_name',
             'property_name',
             'project_name',

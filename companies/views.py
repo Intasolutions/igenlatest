@@ -1,14 +1,31 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from .models import Company, CompanyDocument
 from .serializers import CompanySerializer, CompanyDocumentSerializer
 from users.permissions import IsSuperUser
 
 class CompanyViewSet(viewsets.ModelViewSet):
-    queryset = Company.objects.all()
     serializer_class = CompanySerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]  # ✅ Allow authenticated users with role logic
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'SUPER_USER':
+            return Company.objects.all()
+        elif user.role == 'PROPERTY_MANAGER':
+            return Company.objects.all()
+        return Company.objects.filter(id__in=user.companies.values_list('id', flat=True))
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        ✅ Soft delete: mark company as inactive
+        """
+        company = self.get_object()
+        company.is_active = False
+        company.save()
+        return Response({'detail': 'Company marked as inactive.'}, status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'], permission_classes=[IsSuperUser])
     def upload_document(self, request, pk=None):
@@ -28,7 +45,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def bulk_upload(self, request):
         file = request.FILES.get('file')
         if not file:
-            return Response({'error': 'No file uploaded'}, status=400)
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
         import csv
         decoded_file = file.read().decode('utf-8').splitlines()
@@ -43,3 +60,17 @@ class CompanyViewSet(viewsets.ModelViewSet):
                 results.append({'row': i, 'status': 'error', 'errors': serializer.errors})
 
         return Response({'results': results})
+
+
+class CompanyDocumentViewSet(viewsets.ModelViewSet):
+    queryset = CompanyDocument.objects.all()
+    serializer_class = CompanyDocumentSerializer
+    permission_classes = [IsSuperUser]
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            document = self.get_object()
+            document.delete()
+            return Response({"detail": "Document deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

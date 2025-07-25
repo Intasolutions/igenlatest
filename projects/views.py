@@ -2,10 +2,11 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from users.permissions import IsSuperUser
 
-from .models import Project, Property
+from .models import Project, Property, Contact
 from .serializers import ProjectSerializer, PropertySerializer
+
+from users.permissions import IsSuperUserOrCenterHead  # ✅ Import this correctly
 
 import csv
 
@@ -13,9 +14,14 @@ import csv
 # ViewSet: Project CRUD
 # --------------------
 class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
     serializer_class = ProjectSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsSuperUserOrCenterHead]  # ✅ Allow SUPER_USER and CENTER_HEAD
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'SUPER_USER':
+            return Project.objects.all()
+        return Project.objects.filter(company__in=user.companies.all())
 
     def create(self, request, *args, **kwargs):
         print("\n====== DEBUG: Entered ProjectViewSet.create() ======")
@@ -34,7 +40,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all()
     serializer_class = PropertySerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsSuperUserOrCenterHead]  # ✅ Apply same permission for properties
 
 
 # --------------------------

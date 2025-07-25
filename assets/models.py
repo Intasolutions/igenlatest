@@ -3,6 +3,7 @@ from companies.models import Company
 from properties.models import Property
 from projects.models import Project
 
+
 class Asset(models.Model):
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE, related_name='assets',
@@ -26,9 +27,18 @@ class Asset(models.Model):
     notes = models.TextField(blank=True, help_text="Additional notes about the asset")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when asset was created")
+    tag_id = models.CharField(
+        max_length=100, blank=True, null=True,
+        db_index=True, help_text="Unique tag ID (barcode/RFID)"
+    )
 
-    def __str__(self):
-        return f"{self.name}"
+    def _str_(self):
+        return f"{self.name} ({self.tag_id or 'No Tag'})"
+
+    class Meta:
+        verbose_name = "Asset"
+        verbose_name_plural = "Assets"
+
 
 class AssetServiceDue(models.Model):
     asset = models.ForeignKey(
@@ -40,16 +50,25 @@ class AssetServiceDue(models.Model):
     completed = models.BooleanField(default=False, help_text="Mark if the service was completed")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when this service due was created")
 
-    def __str__(self):
-        return f"Service due on {self.due_date} for {self.asset}"
+    def _str_(self):
+        return f"{self.asset.name} - Due on {self.due_date}"
+
+    class Meta:
+        verbose_name = "Asset Service Due"
+        verbose_name_plural = "Asset Service Dues"
+
 
 class AssetDocument(models.Model):
     asset = models.ForeignKey(
         Asset, on_delete=models.CASCADE, related_name='documents',
         help_text="Linked asset for this document"
     )
-    file = models.FileField(upload_to='asset_docs/', help_text="Uploaded document file")
+    document = models.FileField(upload_to='asset_docs/', help_text="Uploaded document file")
     uploaded_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when document was uploaded")
 
-    def __str__(self):
-        return f"Document for {self.asset}"
+    def _str_(self):
+        return f"Document for {self.asset.name}"
+
+    class Meta:
+        verbose_name = "Asset Document"
+        verbose_name_plural = "Asset Documents"

@@ -61,3 +61,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['role'] = user.role
         return token
+
+    def validate(self, attrs):
+     data = super().validate(attrs)
+     data['user_id'] = self.user.user_id
+
+    # Return the first company (if user is linked to any)
+     companies = self.user.companies.all()
+     data['company_id'] = companies[0].id if companies else None
+
+     return data
+
+
+
+
+

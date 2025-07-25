@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'entities',
     'receipts',
     'assets',
+    'django_filters',
+
 
     # Newly added apps for BRD completion
     'contracts',

@@ -4,9 +4,15 @@ from .serializers import AssetSerializer, AssetDocumentSerializer, AssetServiceD
 from rest_framework.permissions import IsAuthenticated
 
 class AssetViewSet(viewsets.ModelViewSet):
-    queryset = Asset.objects.all().order_by('-created_at')
     serializer_class = AssetSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'SUPER_USER':
+            return Asset.objects.all().order_by('-created_at')
+        return Asset.objects.filter(company__in=user.companies.all()).order_by('-created_at')
+
 
 class AssetDocumentViewSet(viewsets.ModelViewSet):
     queryset = AssetDocument.objects.all()

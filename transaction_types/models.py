@@ -50,6 +50,7 @@ class TransactionType(models.Model):
         default='Active',
         help_text="Status of the transaction type: Active or Inactive"
     )
+    is_credit = models.BooleanField(default=False)
     remarks = models.TextField(
         blank=True,
         help_text="Optional remarks about the transaction type"

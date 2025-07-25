@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from .models import (
     Transaction, ClassifiedTransaction,
     Company, BankAccount, CostCentre, TransactionType
@@ -8,6 +9,9 @@ from .models import (
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
 import csv
 from io import TextIOWrapper
+from django.db.models import Sum
+from django.db.models.functions import Coalesce
+from django.db.models import DecimalField
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -90,7 +94,6 @@ def bulk_upload_transactions(request):
         for row_number, row in enumerate(reader, start=1):
             row_errors = {}
 
-            # Map names to PKs with error handling
             try:
                 company = Company.objects.get(name__iexact=row["company"])
                 row["company"] = company.pk
@@ -148,3 +151,33 @@ def bulk_upload_transactions(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ✅ Spend by Cost Centre API
+@api_view(["GET"])
+
+def spend_by_cost_centre(request):
+    start = request.query_params.get("start")
+    end = request.query_params.get("end")
+
+    filters = {}
+    if start:
+        filters["date__gte"] = start
+    if end:
+        filters["date__lte"] = end
+
+    data = (
+        Transaction.objects
+        .filter(**filters)
+        .values("cost_centre__name")
+        .annotate(
+            total_spent=Coalesce(Sum("amount"), 0, output_field=DecimalField())  # ✅ FIXED HERE
+        )
+        .order_by("-total_spent")
+    )
+    result = [
+        {"cost_centre": item["cost_centre__name"], "total": item["total_spent"]}
+        for item in data if item["cost_centre__name"]
+    ]
+
+    return Response(result)

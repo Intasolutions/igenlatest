@@ -5,13 +5,17 @@ from .models import Entity
 from .serializers import EntitySerializer
 from users.permissions import IsSuperUser  # adjust your permission as needed
 
+from rest_framework.permissions import IsAuthenticated  # ✅ Import this
+
 class EntityViewSet(viewsets.ModelViewSet):
-    queryset = Entity.objects.all()
     serializer_class = EntitySerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated]  # ✅ Changed from IsSuperUser
 
     def get_queryset(self):
-        return Entity.objects.all()
+        user = self.request.user
+        if user.role == 'SUPER_USER':
+            return Entity.objects.all()
+        return Entity.objects.filter(company__in=user.companies.all())
 
     def perform_create(self, serializer):
         entity_type = self.request.data.get('entity_type')
@@ -28,14 +32,10 @@ class EntityViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
-        # same validation logic applies to updates
         self.perform_create(serializer)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-
-        # implement soft delete: set status to Inactive instead of deleting
         instance.status = 'Inactive'
         instance.save()
-
         return Response({'detail': 'Entity soft-deleted (status set to Inactive).'}, status=status.HTTP_200_OK)

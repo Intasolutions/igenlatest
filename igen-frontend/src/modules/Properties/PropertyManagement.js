@@ -6,12 +6,17 @@ import {
   DialogContent, DialogTitle, MenuItem, Snackbar, Alert,
   TextField, Typography, IconButton, Tooltip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Stepper, Step, StepLabel,
-Collapse, Grid, Link// <-- ✅ Add this
+Collapse, Grid, Link, TablePagination,Slide// <-- ✅ Add this
 } from '@mui/material';
 import { Visibility } from '@mui/icons-material';
 
 
+
+
 import { Edit, Delete, KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';  // <-- ✅ Add arrow icons
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 
 export default function PropertiesPage() {
@@ -25,9 +30,11 @@ export default function PropertiesPage() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [activeStep, setActiveStep] = useState(0);
   const [expandedRow, setExpandedRow] = useState(null);
-  
+const [page, setPage] = useState(0);
+const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  
+  const [searchText, setSearchText] = useState('');
+
 
   const steps = ['Property Details', 'Configuration & Financials', 'Address', 'Attachments & Key Dates'];
 
@@ -41,6 +48,16 @@ export default function PropertiesPage() {
     key_date_label: '', key_date_due: '', key_date_remarks: '',
     is_active: true
   });
+
+
+const filteredProperties = properties.filter((prop) =>
+  prop.name.toLowerCase().includes(searchText.toLowerCase())
+);
+
+const paginatedProperties = filteredProperties.slice(
+  page * rowsPerPage,
+  page * rowsPerPage + rowsPerPage
+);
 
   const fetchData = async () => {
     try {
@@ -230,6 +247,9 @@ const handleNext = () => {
   }
 };
 
+
+
+
   const handleBack = () => {
     setActiveStep(prev => prev - 1);
   };
@@ -364,18 +384,50 @@ const renderStepContent = (step) => {
   return (
 
     
-    <div className="p-[95px]">
-      <div className="flex justify-between items-center mb-6">
-        <Typography variant="h5" fontWeight="bold">Cost Property Management</Typography>
-        <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Property</Button>
-      </div>
+    <div className="p-[35px]">
+       <Typography variant="h5" fontWeight="bold"> Property Management</Typography>
+<div className="flex justify-between items-center mt-6 mb-6 flex-wrap gap-4">
+  <div className="flex-1 max-w-sm">
+    <TextField
+      label="Search by Name"
+      variant="outlined"
+      size="small"
+      fullWidth
+      value={searchText}
+      onChange={(e) => setSearchText(e.target.value)}
+      placeholder="Type property name..."
+      InputProps={{
+        startAdornment: (
+          <span className="material-icons text-gray-500 mr-2">search</span>
+        ),
+        sx: {
+          borderRadius: 3,
+          backgroundColor: '#fafafa',
+        }
+      }}
+    />
+  </div>
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={() => {
+      resetForm();
+      setOpen(true);
+      setIsEditMode(false);
+    }}
+  >
+    ADD PROPERTY
+  </Button>
+</div>
+
+
   <Card sx={{ borderRadius: 3 }}>
         <CardContent>
           <TableContainer>
             <Table size="small">
               <TableHead sx={{ backgroundColor: '#e3f2fd' }}>
                 <TableRow>
-                  <TableCell><strong>ID</strong></TableCell>
+                  <TableCell><strong>#</strong></TableCell>
                   <TableCell><strong>Company</strong></TableCell>
                   <TableCell><strong>Name</strong></TableCell>
                   <TableCell><strong>Status</strong></TableCell>
@@ -387,16 +439,16 @@ const renderStepContent = (step) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {properties.map((prop) => (
+            {paginatedProperties.map((prop,index) => (
                   <React.Fragment key={prop.id}>
-                    <TableRow
-                      sx={{ backgroundColor: prop.is_active ? '#e8f5e9' : '#fffde7' }}
-                    >
+                <TableRow key={prop.id || index}
+  sx={{ backgroundColor: prop.is_active ? '#e8f5e9' : '#fffde7' }}
+>
                       <TableCell>
                         <IconButton size="small" onClick={() => setExpandedRow(expandedRow === prop.id ? null : prop.id)}>
                           {expandedRow === prop.id ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
                         </IconButton>
-                        {prop.id}
+                           <TableCell>{index + 1}</TableCell>
                       </TableCell>
                       <TableCell>{prop.company_name}</TableCell>
                       <TableCell>{prop.name}</TableCell>
@@ -426,108 +478,131 @@ const renderStepContent = (step) => {
                         </Tooltip>
                       </TableCell>
                     </TableRow>
-                 <TableRow sx={{ backgroundColor: '#2f9dd557' }}>
+                 <TableRow sx={{ backgroundColor: '#e0e5e757' }}>
                       <TableCell colSpan={9} sx={{ p: 0, border: 0 }}>
                         <Collapse in={expandedRow === prop.id} timeout="auto" unmountOnExit>
-                          <Box margin={2}>
-                            <Typography variant="subtitle2"fontWeight="bold" mb={3} gutterBottom>Property Details</Typography>
-                           <Grid container spacing={3}>
-                              <Grid item xs={12} sm={6}><Typography><strong>Lease Start:</strong> {prop.lease_start_date || '-'}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Lease End:</strong> {prop.lease_end_date || '-'}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Next Inspection:</strong> {prop.next_inspection_date || '-'}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Land Area (Cents):</strong> {prop.land_area_cents}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Service Charge:</strong> {prop.igen_service_charge}</Typography></Grid>
-                              <Grid item xs={12}><Typography><strong>Address:</strong> {prop.address_line1}, {prop.address_line2}, {prop.city}, {prop.state} - {prop.pincode}, {prop.country}</Typography></Grid>
-                              <Grid item xs={12}><Typography><strong>Remarks:</strong> {prop.remarks || 'None'}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Key Date:</strong> {prop.key_date_label || '-'} - {prop.key_date_due || '-'}</Typography></Grid>
-                              <Grid item xs={12} sm={6}><Typography><strong>Key Remarks:</strong> {prop.key_date_remarks || '-'}</Typography></Grid>
-                       
-{Array.isArray(prop.document_urls) && prop.document_urls.length > 0 ? (
-  <Grid item xs={12}>
-    <Typography sx={{  fontWeight: 'bold' }}>Document Preview</Typography>
-    <Grid container spacing={2} sx={{ mt: 1 }}>
-  {prop.document_urls.map((url, index) => {
-  const fullUrl = url?.startsWith('http') ? url : `http://localhost:8000${url}`;
-  if (!url) return null;
+  <Box margin={2}>
+        <Typography variant="subtitle2" fontWeight="bold" mb={2} gutterBottom>
+          Property Details
+        </Typography>
 
-  const isPDF = fullUrl.toLowerCase().endsWith('.pdf');
+        {/* Detail Table */}
+        <Table size="small" sx={{ mb: 2 }}>
+          <TableBody>
+            <TableRow>
+              <TableCell><strong>Lease Start:</strong></TableCell>
+              <TableCell>{prop.lease_start_date || '-'}</TableCell>
+              <TableCell><strong>Lease End:</strong></TableCell>
+              <TableCell>{prop.lease_end_date || '-'}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell><strong>Next Inspection:</strong></TableCell>
+              <TableCell>{prop.next_inspection_date || '-'}</TableCell>
+              <TableCell><strong>Land Area (Cents):</strong></TableCell>
+              <TableCell>{prop.land_area_cents}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell><strong>Service Charge:</strong></TableCell>
+              <TableCell>{prop.igen_service_charge}</TableCell>
+              <TableCell><strong>Status:</strong></TableCell>
+              <TableCell>{prop.status || '-'}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell><strong>Address:</strong></TableCell>
+              <TableCell colSpan={3}>
+                {`${prop.address_line1}, ${prop.address_line2}, ${prop.city}, ${prop.state} - ${prop.pincode}, ${prop.country}`}
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell><strong>Remarks:</strong></TableCell>
+              <TableCell colSpan={3}>{prop.remarks || 'None'}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell><strong>Key Date:</strong></TableCell>
+              <TableCell>{prop.key_date_label || '-'} - {prop.key_date_due || '-'}</TableCell>
+              <TableCell><strong>Key Remarks:</strong></TableCell>
+              <TableCell>{prop.key_date_remarks || '-'}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
 
-  return (
-    <Grid item xs={6} sm={4} md={3} key={index}>
-      <Box
-        sx={{
-          border: '1px solid #ddd',
-          borderRadius: 2,
-          p: 1,
-          boxShadow: 1,
-          backgroundColor: '#fafafa',
-          textAlign: 'center',
-          transition: 'transform 0.2s',
-          '&:hover': { transform: 'scale(1.03)', boxShadow: 3 }
-        }}
-      >
-        {isPDF ? (
-          <Box
-            sx={{
-              height: 100,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f5f5f5',
-              borderRadius: 6,
-              fontWeight: 'bold',
-              color: '#1976d2',
-              fontSize: 14
-            }}
-          >
-            PDF Document
-          </Box>
-        ) : (
-          <img
-            src={fullUrl}
-            alt={`Document ${index + 1}`}
-            style={{
-              width: '100%',
-              height: 100,
-              objectFit: 'cover',
-              borderRadius: 6
-            }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              console.warn('Invalid image URL:', fullUrl);
-            }}
-          />
-        )}
+        {/* Document Preview Section */}
+        <Box>
+          <Typography sx={{ fontWeight: 'bold', mb: 1 }}>Document Preview</Typography>
+          {Array.isArray(prop.document_urls) && prop.document_urls.length > 0 ? (
+            <Grid container spacing={2}>
+              {prop.document_urls.map((url, index) => {
+                const fullUrl = url?.startsWith('http') ? url : `http://localhost:8000${url}`;
+                const isPDF = fullUrl.toLowerCase().endsWith('.pdf');
+                if (!url) return null;
 
-        <Link
-          href={fullUrl}
-          target="_blank"
-          rel="noopener"
-          underline="hover"
-          sx={{ display: 'block', mt: 1, fontSize: 13 }}
-        >
-          View / Download
-        </Link>
+                return (
+                  <Grid item xs={6} sm={4} md={3} key={index}>
+                    <Box
+                      sx={{
+                        border: '1px solid #ddd',
+                        borderRadius: 2,
+                        p: 1,
+                        boxShadow: 1,
+                        backgroundColor: '#fafafa',
+                        textAlign: 'center',
+                        transition: 'transform 0.2s',
+                        '&:hover': { transform: 'scale(1.03)', boxShadow: 3 }
+                      }}
+                    >
+                      {isPDF ? (
+                        <Box
+                          sx={{
+                            height: 60,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: 6,
+                            fontWeight: 'bold',
+                            color: '#1976d2',
+                            fontSize: 14
+                          }}
+                        >
+                          PDF Document
+                        </Box>
+                      ) : (
+                        <img
+                          src={fullUrl}
+                          alt={`Document ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: 60,
+                            objectFit: 'cover',
+                            borderRadius: 6
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <Link
+                        href={fullUrl}
+                        target="_blank"
+                        rel="noopener"
+                        underline="hover"
+                        sx={{ display: 'block', mt: 1, fontSize: 13 }}
+                      >
+                        View / Download
+                      </Link>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          ) : (
+            <Typography sx={{ mt: 1, fontStyle: 'italic', color: 'text.secondary' }}>
+              No documents available
+            </Typography>
+          )}
+        </Box>
       </Box>
-    </Grid>
-  );
-})}
 
-    </Grid>
-  </Grid>
-) : (
-  <Grid item xs={12}>
-    <Typography sx={{ mt: 2, fontStyle: 'italic', color: 'text.secondary' }}>
-      No documents available
-    </Typography>
-  </Grid>
-)}
-
-
-
-
-                            </Grid>
-                          </Box>
                         </Collapse>
                       </TableCell>
                     </TableRow>
@@ -536,11 +611,33 @@ const renderStepContent = (step) => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+  rowsPerPageOptions={[5, 10, 25]}
+  component="div"
+  count={filteredProperties.length}
+  rowsPerPage={rowsPerPage}
+  page={page}
+  onPageChange={(event, newPage) => setPage(newPage)}
+  onRowsPerPageChange={(event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // reset to first page
+  }}
+/>
+
         </CardContent>
       </Card>
 
       {/* Dialog component remains unchanged except for button text */}
- <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth   PaperProps={{ sx: { borderRadius: 3, p: 2 } }}>
+<Dialog
+  open={open}
+  onClose={() => setOpen(false)}
+  maxWidth="md"
+  fullWidth
+  TransitionComponent={Transition} // ✅ Add this line
+  keepMounted // optional: improves performance
+  PaperProps={{ sx: { borderRadius: 3, p: 2 } }}
+>
+
         <DialogTitle sx={{ fontWeight: 'bold' }}>{isEditMode ? 'Edit Property' : 'Add Property'}</DialogTitle>
         <DialogContent>
           <Stepper activeStep={activeStep} alternativeLabel>
@@ -588,7 +685,7 @@ const renderStepContent = (step) => {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'end' }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
@@ -598,6 +695,7 @@ const renderStepContent = (step) => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      
     </div>
   );
 }

@@ -15,10 +15,10 @@ class AssetDocumentInline(admin.TabularInline):
 class AssetAdmin(admin.ModelAdmin):
     list_display = (
         'name', 'company', 'property', 'project', 'category',
-        'purchase_date', 'purchase_price', 'warranty_expiry', 'location'
+        'purchase_date', 'purchase_price', 'warranty_expiry', 'location', 'is_active'
     )
-    list_filter = ('company', 'category', 'purchase_date', 'warranty_expiry')
-    search_fields = ('name', 'category', 'location', 'company__name', 'project__name', 'property__name')
+    list_filter = ('company', 'category', 'purchase_date', 'warranty_expiry', 'is_active')
+    search_fields = ('name', 'category', 'location', 'company_name', 'projectname', 'property_name')
     inlines = [AssetServiceDueInline, AssetDocumentInline]
     readonly_fields = ('created_at',)
     fieldsets = (
@@ -26,7 +26,7 @@ class AssetAdmin(admin.ModelAdmin):
             'fields': (
                 'name', 'company', 'project', 'property', 'category',
                 'purchase_date', 'purchase_price', 'warranty_expiry',
-                'location', 'maintenance_frequency', 'notes', 'created_at'
+                'location', 'maintenance_frequency', 'notes', 'is_active', 'created_at'
             )
         }),
     )
@@ -39,6 +39,6 @@ class AssetServiceDueAdmin(admin.ModelAdmin):
 
 @admin.register(AssetDocument)
 class AssetDocumentAdmin(admin.ModelAdmin):
-    list_display = ('asset', 'file', 'uploaded_at')
+    list_display = ('asset', 'document', 'uploaded_at')  # 🔄 fixed 'file' ➝ 'document'
     search_fields = ('asset__name',)
     readonly_fields = ('uploaded_at',)

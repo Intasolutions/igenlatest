@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { jwtDecode } from 'jwt-decode';
 
 export default function Login() {
   const [user_id, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [type, setType] = useState(''); // success | error
+  const [type, setType] = useState(''); // 'success' | 'error'
 
   useEffect(() => {
     if (message) {
@@ -17,42 +18,62 @@ export default function Login() {
     }
   }, [message]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const redirectToDashboard = (role) => {
+    switch (role) {
+      case 'SUPER_USER':
+      case 'CENTER_HEAD':
+      case 'PROPERTY_MANAGER':
+      case 'ACCOUNTANT':
+        window.location.href = '/dashboard';
+        break;
+      default:
+        window.location.href = '/unauthorized';
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const res = await axios.post('http://127.0.0.1:8000/api/users/token/', {
         user_id,
         password,
       });
-      localStorage.setItem('access', res.data.access);
-      localStorage.setItem('refresh', res.data.refresh);
+
+      const { access, refresh } = res.data;
+
+      localStorage.setItem('access', access);
+      localStorage.setItem('refresh', refresh);
+
+      const decoded = jwtDecode(access);
+      const role = decoded?.role || 'UNKNOWN';
+      localStorage.setItem('role', role);
+
+      console.log('✅ Logged in as:', role);
+
       setType('success');
-      setMessage('Login successful! please Wait...');
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1500);
+      setMessage('Login successful! Redirecting...');
+
+      setTimeout(() => redirectToDashboard(role), 1200);
     } catch (err) {
+      console.error('Login error:', err);
       setType('error');
-      setMessage('Login failed: check your credentials');
+      setMessage('Login failed: Check your credentials');
     }
   };
 
   return (
     <div className="flex min-h-screen bg-white text-gray-800 relative overflow-hidden">
+      {message && (
+        <div
+          className={`absolute top-5 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-md transition-all duration-300 ${
+            type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          }`}
+        >
+          {message}
+        </div>
+      )}
 
-      {/* ✅ Notification */}
- {message && (
-  <div
-    className={`absolute top-5 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-md transition-all duration-300 ${
-      type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-    }`}
-  >
-    {message}
-  </div>
-)}
-
-
-      {/* ✅ Left Side Image */}
+      {/* Left Visual */}
       <div className="hidden lg:flex flex-col items-center justify-center w-1/2 bg-igen relative overflow-hidden">
         <motion.div
           initial={{ opacity: 0 }}
@@ -61,18 +82,17 @@ export default function Login() {
           className="absolute w-[600px] h-[600px] bg-shadow rounded-full blur-[120px] animate-pulse"
         ></motion.div>
 
-        {/* ✅ Logo Animation */}
         <motion.img
           src="/logo/igen.png"
           alt="Visual"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration:1.5  }}
+          transition={{ duration: 1.5 }}
           className="w-[600px] z-10"
         />
       </div>
 
-      {/* ✅ Right Side Login Form */}
+      {/* Right Form */}
       <div className="flex flex-col justify-center w-full lg:w-1/2 px-8 py-12">
         <motion.div
           initial={{ y: 30, opacity: 0 }}
@@ -82,7 +102,6 @@ export default function Login() {
         >
           <div className="flex items-center gap-2 mb-2">
             <h2 className="text-2xl font-bold text-gray-700">Hi</h2>
-            {/* ✅ Emoji Shake */}
             <motion.span
               animate={{ rotate: [0, 20, -15, 10, -5, 0] }}
               transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
@@ -103,14 +122,18 @@ export default function Login() {
               value={user_id}
               onChange={(e) => setUserId(e.target.value)}
               placeholder="Username"
+              autoComplete="username"
               className="w-full px-4 py-2 border rounded-lg focus:outline-purple-600"
+              required
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
+              autoComplete="current-password"
               className="w-full px-4 py-2 border rounded-lg focus:outline-purple-600"
+              required
             />
             <div className="text-right text-sm text-indigo-600 hover:underline cursor-pointer">
               Forgotten password?

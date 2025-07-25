@@ -14,11 +14,17 @@ urlpatterns = [
     path('api/banks/', include('banks.urls')),
     path('api/cost-centres/', include('cost_centres.urls')),
     path('api/transaction-types/', include('transaction_types.urls')),
+    path('api/', include('transactions.urls')),
+
     path('api/projects/', include('projects.urls')),
     path('api/entities/', include('entities.urls')),
     path('api/receipts/', include('receipts.urls')),
     path('api/', include('assets.urls')),  # instead of 'api/assets/'
-    path('api/contacts/', include('contacts.urls')),
+    path('api/', include('contacts.urls')),
+    path('api/', include('vendors.urls')),
+    path('api/contracts/', include('contracts.urls')),
+
+
 
     # ✅ FIXED: This now registers properties API correctly
     path('api/', include('properties.urls')),

@@ -2,41 +2,60 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-
+from transactions.models import Transaction
 from companies.models import Company
 from banks.models import BankAccount
 from cost_centres.models import CostCentre
 from transaction_types.models import TransactionType
-from transactions.models import Transaction
 from users.models import User
+from projects.models import Project
+from assets.models import Asset
+from contacts.models import Contact
+from vendors.models import Vendor
+from properties.models import Property
+
 from users.serializers import UserSerializer
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard_stats(request):
     """
-    Returns a summary of all key data points for the dashboard.
+    Returns dashboard summary counts for authorized roles.
     """
-    try:
-        total_companies = Company.objects.count()
-        total_banks = BankAccount.objects.count()
-        total_cost_centres = CostCentre.objects.count()
-        total_transaction_types = TransactionType.objects.count()
-        total_transactions = Transaction.objects.count()
-        total_credit = Transaction.objects.filter(transaction_type__is_credit=True).aggregate(total=models.Sum('amount'))['total'] or 0
-        total_debit = Transaction.objects.filter(transaction_type__is_credit=False).aggregate(total=models.Sum('amount'))['total'] or 0
+    allowed_roles = ['SUPER_USER', 'CENTER_HEAD', 'PROPERTY_MANAGER']
 
-        return Response({
-            'total_companies': total_companies,
-            'total_banks': total_banks,
-            'total_cost_centres': total_cost_centres,
-            'total_transaction_types': total_transaction_types,
-            'total_transactions': total_transactions,
-            'total_credit': total_credit,
-            'total_debit': total_debit,
-        })
-    except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not hasattr(request.user, 'role') or request.user.role not in allowed_roles:
+        return Response(
+            {'detail': '403 Forbidden – You are not authorized to view this dashboard.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # 📊 Summary Counts Only (NO transaction trends)
+    total_users = User.objects.count()
+    total_companies = Company.objects.count()
+    total_projects = Project.objects.count()
+    total_properties = Property.objects.count()
+    total_assets = Asset.objects.count()
+    total_contacts = Contact.objects.count()
+    total_cost_centres = CostCentre.objects.count()
+    total_banks = BankAccount.objects.count()
+    total_vendors = Vendor.objects.count()
+    total_transaction_types = TransactionType.objects.count()
+
+    return Response({
+        'total_users': total_users,
+        'total_companies': total_companies,
+        'total_projects': total_projects,
+        'total_properties': total_properties,
+        'total_assets': total_assets,
+        'total_contacts': total_contacts,
+        'total_cost_centres': total_cost_centres,
+        'total_banks': total_banks,
+        'total_vendors': total_vendors,
+        'total_transaction_types': total_transaction_types,
+         'total_transactions': Transaction.objects.count(),
+    })
 
 
 @api_view(['GET'])
@@ -70,11 +89,8 @@ def create_user(request):
             user.save()
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
 
-    # ADD THIS: print errors to console for debugging
     print("❌ User creation failed:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 
 @api_view(['DELETE'])

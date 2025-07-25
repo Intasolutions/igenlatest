@@ -8,8 +8,9 @@ class Company(models.Model):
     address = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)  # Merged from friend's version
 
-    def __str__(self):
+    def __str__(self):  # Corrected method name
         return self.name
 
 class CompanyDocument(models.Model):

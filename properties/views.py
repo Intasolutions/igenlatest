@@ -9,9 +9,22 @@ from rest_framework.permissions import IsAuthenticated
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
-    queryset = Property.objects.all().prefetch_related('documents', 'key_dates')
     serializer_class = PropertySerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+     user = self.request.user
+
+     if user.role == 'SUPER_USER':
+        return Property.objects.all().prefetch_related('documents', 'key_dates')
+    
+     elif user.role == 'PROPERTY_MANAGER':
+        # ❗ Only properties belonging to user's companies
+        return Property.objects.filter(company__in=user.companies.all()).prefetch_related('documents', 'key_dates')
+
+    # Default fallback — restrict others similarly
+     return Property.objects.filter(company__in=user.companies.all()).prefetch_related('documents', 'key_dates')
+
 
     @action(detail=True, methods=['post'])
     def toggle_active(self, request, pk=None):
@@ -23,10 +36,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
         except Property.DoesNotExist:
             return Response({'status': 'error', 'message': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
 
+
 class PropertyDocumentViewSet(viewsets.ModelViewSet):
     queryset = PropertyDocument.objects.all()
     serializer_class = PropertyDocumentSerializer
     permission_classes = [IsAuthenticated]
+
 
 class PropertyKeyDateViewSet(viewsets.ModelViewSet):
     queryset = PropertyKeyDate.objects.all()
