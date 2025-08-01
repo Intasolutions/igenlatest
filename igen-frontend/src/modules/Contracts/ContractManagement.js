@@ -19,12 +19,7 @@ const ContractManagement = () => {
     setLoading(true);
     API.get('contracts/')
       .then((res) => {
-        if (Array.isArray(res.data)) {
-          setContracts(res.data);
-        } else {
-          console.error('Unexpected response:', res.data);
-          setContracts([]);
-        }
+        setContracts(Array.isArray(res.data) ? res.data : []);
       })
       .catch((err) => {
         console.error('Error fetching contracts:', err);
@@ -37,13 +32,16 @@ const ContractManagement = () => {
     fetchContracts();
   }, []);
 
-  const downloadContract = (id) => {
+  const downloadContract = (id, vendorName = '') => {
     API.get(`contracts/${id}/download/`, { responseType: 'blob' })
       .then((res) => {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
+        const filename = vendorName
+          ? `${vendorName.replace(/\s+/g, '_')}_contract.pdf`
+          : `contract_${id}.pdf`;
         link.href = url;
-        link.setAttribute('download', 'contract_document.pdf');
+        link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
       })
@@ -58,8 +56,14 @@ const ContractManagement = () => {
   const handleDeleteContract = (id) => {
     if (window.confirm('Are you sure you want to delete this contract?')) {
       API.delete(`contracts/${id}/`)
-        .then(() => fetchContracts())
-        .catch((err) => console.error('Error deleting contract:', err));
+        .then(() => {
+          alert('Contract deleted.');
+          fetchContracts();
+        })
+        .catch((err) => {
+          console.error('Error deleting contract:', err);
+          alert('Failed to delete contract.');
+        });
     }
   };
 
@@ -100,22 +104,28 @@ const ContractManagement = () => {
               contracts.map((contract, index) => (
                 <TableRow key={contract.id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{contract.vendor_name}</TableCell>
-                  <TableCell>{contract.cost_centre_name}</TableCell>
-                  <TableCell>{contract.entity_name}</TableCell>
-                  <TableCell>{contract.description}</TableCell>
-                  <TableCell>{format(new Date(contract.contract_date), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{format(new Date(contract.start_date), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{format(new Date(contract.end_date), 'dd/MM/yyyy')}</TableCell>
-                  <TableCell>{contract.total_contract_value || 0}</TableCell>
-                  <TableCell>{contract.total_paid || 0}</TableCell>
-                  <TableCell>{contract.total_due || 0}</TableCell>
+                  <TableCell>{contract.vendor_name || '—'}</TableCell>
+                  <TableCell>{contract.cost_centre_name || '—'}</TableCell>
+                  <TableCell>{contract.entity_name || '—'}</TableCell>
+                  <TableCell>{contract.description || '—'}</TableCell>
+                  <TableCell>
+                    {contract.contract_date ? format(new Date(contract.contract_date), 'dd/MM/yyyy') : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {contract.start_date ? format(new Date(contract.start_date), 'dd/MM/yyyy') : '—'}
+                  </TableCell>
+                  <TableCell>
+                    {contract.end_date ? format(new Date(contract.end_date), 'dd/MM/yyyy') : '—'}
+                  </TableCell>
+                  <TableCell>{contract.total_contract_value ?? 0}</TableCell>
+                  <TableCell>{contract.total_paid ?? 0}</TableCell>
+                  <TableCell>{contract.total_due ?? 0}</TableCell>
                   <TableCell>
                     {contract.document ? (
                       <Button
                         variant="outlined"
                         size="small"
-                        onClick={() => downloadContract(contract.id)}
+                        onClick={() => downloadContract(contract.id, contract.vendor_name || '')}
                       >
                         Download
                       </Button>
@@ -124,21 +134,23 @@ const ContractManagement = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => handleOpenMilestoneDialog(contract)}
-                    >
-                      Milestones
-                    </Button>
-                    <Button
-                      variant="text"
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteContract(contract.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleOpenMilestoneDialog(contract)}
+                      >
+                        Milestones
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteContract(contract.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -161,7 +173,10 @@ const ContractManagement = () => {
 
       <ContractMilestoneDialog
         open={milestoneDialogOpen}
-        handleClose={() => setMilestoneDialogOpen(false)}
+        handleClose={() => {
+          setMilestoneDialogOpen(false);
+          fetchContracts(); // refresh on close
+        }}
         contract={selectedContract}
       />
     </div>

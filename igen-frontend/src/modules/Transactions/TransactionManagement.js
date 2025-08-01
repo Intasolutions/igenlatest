@@ -8,6 +8,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CloseIcon from '@mui/icons-material/Close';
@@ -47,21 +48,28 @@ const [searchCompany, setSearchCompany] = useState(''); const [snackbar, setSnac
     { cost_centre: '', entity: '', transaction_type: '', asset: '', contract: '', amount: '', value_date: '', remarks: '' }
   ]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+useEffect(() => {
+  fetchData();
+}, []);
 
   const fetchData = async () => {
     try {
-      const [trans, comps, bks, ccs, tts, ents] = await Promise.all([
+      const [trans, classifiedRes, comps, bks, ccs, tts, ents] = await Promise.all([
         API.get('transactions/'),
+        API.get('classified-transactions'),
         API.get('companies/'),
         API.get('banks/'),
         API.get('cost-centres/'),
         API.get('transaction-types/'),
         API.get('entities/')
       ]);
-      setTransactions(Array.isArray(trans.data) ? trans.data : []);
+
+      const transactions = Array.isArray(trans.data) ? trans.data : [];
+      const classified = Array.isArray(classifiedRes.data) ? classifiedRes.data : [];
+
+      setTransactions([...transactions, ...classified]); // ✅ Append
+      setClassifiedDetails(classified); // optional: store separately too
+
       setCompanies(comps.data);
       setBanks(bks.data);
       setCostCentres(ccs.data);
@@ -71,6 +79,7 @@ const [searchCompany, setSearchCompany] = useState(''); const [snackbar, setSnac
       setSnackbar({ open: true, message: 'Failed to fetch data', severity: 'error' });
     }
   };
+
 
   const handleBulkUpload = async () => {
     if (!file) {
@@ -109,18 +118,6 @@ const [searchCompany, setSearchCompany] = useState(''); const [snackbar, setSnac
 
   const handleFileChange = (e) => setFile(e.target.files[0]);
 
-const fetchClassifiedDetails = async (transactionId) => {
-  try {
-    const transaction = transactions.find(t => t.id === transactionId); // 👈 Find full transaction
-    setSelectedTransaction(transaction); // 👈 Save for UI
-
-    const res = await API.get(`classified-transactions/?transaction=${transactionId}`);
-    setClassifiedDetails(res.data);
-    setShowDetailsDialog(true);
-  } catch (err) {
-    setSnackbar({ open: true, message: 'Failed to fetch split data', severity: 'error' });
-  }
-};
 
 
   const handleAddTransaction = async () => {
@@ -266,10 +263,11 @@ const handleOpenSplitDialog = async (txn) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
-const filteredTransactions = transactions.filter(t =>
-  t.company_name?.toLowerCase().includes(searchCompany.toLowerCase())
-);
+  console.log('paginated:',transactions)
+const filteredTransactions = transactions
+// .filter(t =>
+//   t.company_name?.toLowerCase().includes(searchCompany.toLowerCase())
+// );
 
 const paginatedData = rowsPerPage > 0
   ? filteredTransactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -279,6 +277,8 @@ const handleExportToCSV = () => {
   const headers = [
     "Company", "Bank", "Cost Centre", "Transaction Type", "Direction", "Amount", "Date", "Notes"
   ];
+
+  
 
   const rows = transactions.map((t) => [
     t.company_name || '',
@@ -345,7 +345,7 @@ const handleRemoveSplitRow = (index) => {
   variant="outlined"
   color="success"
   onClick={handleExportToCSV}
-  startIcon={<UploadFileIcon />}
+  startIcon={<DownloadIcon />}
   sx={{
     borderRadius: 2,
     textTransform: 'none',
@@ -705,98 +705,7 @@ const handleRemoveSplitRow = (index) => {
 
 
       {/* Classified Details Dialog */}
-<Dialog open={showDetailsDialog} onClose={() => setShowDetailsDialog(false)} fullWidth maxWidth="md"  
-       TransitionComponent={Transition} 
-       keepMounted 
-       PaperProps={{ sx: { borderRadius: 3, p: 2 } }}>
-  <DialogTitle sx={{ fontWeight: 600, pb: 1.5 }}>Split Details</DialogTitle>
 
-  <DialogContent dividers sx={{ px: 3, py: 2 }}>
-    {/* Transaction Summary Header */}
-    <Box
-      sx={{
-        backgroundColor: '#e3f2fd',
-        borderRadius: 2,
-        p: 2,
-        mb: 3,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-      }}
-    >
-     <Box
-  sx={{
-    backgroundColor: '#e3f2fd',
-    borderRadius: 2,
-
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  }}
->
-  <Box>
-    <Typography variant="subtitle2" color="text.secondary">
-      Transaction Amount
-    </Typography>
-    <Typography variant="h6" fontWeight="bold">
-      ₹ {selectedTransaction?.amount?.toLocaleString('en-IN') || '0.00'}
-    </Typography>
-  </Box>
-
- 
-</Box>
-
-      <Box>
-        <Typography variant="subtitle2" color="text.secondary">
-          Transaction Date
-        </Typography>
-        <Typography variant="h6" fontWeight="medium">
-          {selectedTransaction?.date || '—'}
-        </Typography>
-      </Box>
-    </Box>
-
-    {/* Table or Message */}
-    {classifiedDetails.length === 0 ? (
-      <Typography variant="body1">No split details available.</Typography>
-    ) : (
-      <Table size="small">
-        <TableHead sx={{ backgroundColor: '#f0f4ff' }}>
-          <TableRow>
-            <TableCell>#</TableCell>
-            <TableCell>Cost Centre</TableCell>
-            <TableCell>Entity</TableCell>
-            <TableCell>Transaction Type</TableCell>
-            <TableCell>Amount</TableCell>
-            <TableCell>Value Date</TableCell>
-            <TableCell>Remarks</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {classifiedDetails.map((row, index) => (
-            <TableRow key={row.classification_id || index}>
-              <TableCell>{index + 1}</TableCell>
-              <TableCell>{row.cost_centre_name || '—'}</TableCell>
-              <TableCell>{row.entity_name || '—'}</TableCell>
-              <TableCell>{row.transaction_type_name || '—'}</TableCell>
-              <TableCell>₹ {parseFloat(row.amount).toLocaleString('en-IN')}</TableCell>
-              <TableCell>{row.value_date || '—'}</TableCell>
-              <TableCell>{row.remarks || '—'}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    )}
-  </DialogContent>
-
-  <DialogActions sx={{ px: 3, py: 2 }}>
-    <Button onClick={() => setShowDetailsDialog(false)} variant="outlined" color="primary">
-      Close
-    </Button>
-  </DialogActions>
-</Dialog>
 
 
       {/* Table */}
@@ -828,17 +737,12 @@ const handleRemoveSplitRow = (index) => {
                     <TableCell>{t.transaction_type_name || 'N/A'}</TableCell>
                     <TableCell>{t.direction}</TableCell>
                     <TableCell>{t.amount}</TableCell>
-                    <TableCell>{t.date}</TableCell>
+                    <TableCell>{t.date || t.value_date}</TableCell>
                     <TableCell>{t.notes}</TableCell>
                     <TableCell align="center">
                       <Tooltip title="Split Transaction">
                         <IconButton color="primary" onClick={() => handleOpenSplitDialog(t)}>
                           <AddIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="View Split Details">
-                        <IconButton color="secondary" onClick={() => fetchClassifiedDetails(t.id)}>
-                          <VisibilityIcon />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete Transaction">
@@ -863,6 +767,8 @@ const handleRemoveSplitRow = (index) => {
           />
         </CardContent>
       </Card>
+      
+
             <Snackbar
               open={snackbar.open}
               autoHideDuration={4000}
@@ -877,6 +783,7 @@ const handleRemoveSplitRow = (index) => {
                 {snackbar.message}
               </Alert>
             </Snackbar>
+
     </div>
     
   );

@@ -15,7 +15,9 @@ import ReceiptManagement from './modules/Receipts/ReceiptManagement';
 import AssetManagement from './modules/Assets/AssetManagement';
 import ContactManagement from './modules/Contacts/ContactManagement';
 import VendorManagement from './modules/Vendors/VendorManagement';
-import ContractManagement from './modules/Contracts/ContractManagement'; // ✅ Newly added
+import ContractManagement from './modules/Contracts/ContractManagement';
+import CashLedgerManagement from './modules/CashLedger/CashLedgerManagement';
+import EntityWiseReport from './modules/reports/EntityWiseReport'; // ✅ NEW
 
 import ProtectedRoute from './routes/ProtectedRoute';
 import Sidebar from './components/Slidebar';
@@ -32,7 +34,7 @@ function AppContent() {
         flexGrow: 1,
         backgroundColor: '#F9FAFB',
         minHeight: '100vh',
-        padding: '20px',
+     
       }}>
         {!hideNavOnLogin && <Header />}
         <Routes>
@@ -51,31 +53,31 @@ function AppContent() {
           } />
 
           <Route path="/companies" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'CENTER_HEAD']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER']}>
               <CompanyManagement />
             </ProtectedRoute>
           } />
 
           <Route path="/banks" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'CENTER_HEAD', 'ACCOUNTANT']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'CENTER_HEAD']}>
               <BankManagement />
             </ProtectedRoute>
           } />
 
           <Route path="/cost-centres" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT' ,'CENTER_HEAD', 'PROPERTY_MANAGER']}>
               <CostCentreManagement />
             </ProtectedRoute>
           } />
 
           <Route path="/transaction-types" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT','CENTER_HEAD']}>
               <TransactionTypeManagement />
             </ProtectedRoute>
           } />
 
           <Route path="/transactions" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT', 'PROPERTY_MANAGER']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT']}>
               <TransactionManagement />
             </ProtectedRoute>
           } />
@@ -87,13 +89,13 @@ function AppContent() {
           } />
 
           <Route path="/properties" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER', 'CENTER_HEAD']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER', 'CENTER_HEAD','ACCOUNTANT']}>
               <PropertyManagement />
             </ProtectedRoute>
           } />
 
           <Route path="/entities" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER', 'CENTER_HEAD','ACCOUNTANT']}>
               <EntityManagement />
             </ProtectedRoute>
           } />
@@ -105,7 +107,7 @@ function AppContent() {
           } />
 
           <Route path="/assets" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER', 'CENTER_HEAD']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'PROPERTY_MANAGER', 'CENTER_HEAD','ACCOUNTANT']}>
               <AssetManagement />
             </ProtectedRoute>
           } />
@@ -117,15 +119,27 @@ function AppContent() {
           } />
 
           <Route path="/vendors" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT', 'PROPERTY_MANAGER','CENTER_HEAD']}>
               <VendorManagement />
             </ProtectedRoute>
           } />
 
-          {/* ✅ Contracts route */}
           <Route path="/contracts" element={
-            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT', 'PROPERTY_MANAGER']}>
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT', 'PROPERTY_MANAGER','CENTER_HEAD']}>
               <ContractManagement />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/cash-ledger" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'ACCOUNTANT','CENTER_HEAD']}>
+              <CashLedgerManagement />
+            </ProtectedRoute>
+          } />
+
+
+          <Route path="/entity-report" element={
+            <ProtectedRoute allowedRoles={['SUPER_USER', 'CENTER_HEAD', 'ACCOUNTANT','PROPERTY_MANAGER']}>
+              <EntityWiseReport />
             </ProtectedRoute>
           } />
 

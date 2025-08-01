@@ -3,6 +3,9 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from companies.models import Company
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class Contact(models.Model):
     INDIVIDUAL = 'Individual'
@@ -29,7 +32,8 @@ class Contact(models.Model):
     full_name = models.CharField(max_length=255)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=INDIVIDUAL)
     stakeholder_types = models.JSONField(default=list)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='contacts', null=True)
+
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, related_name='contacts', null=True, blank=True)
 
     phone = models.CharField(
         max_length=10,
@@ -43,7 +47,7 @@ class Contact(models.Model):
     gst = models.CharField(max_length=25, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    # Location info
+    # Optional location fields
     landmark = models.CharField(max_length=255, blank=True, null=True)
     pincode = models.CharField(max_length=10, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
@@ -51,12 +55,16 @@ class Contact(models.Model):
     state = models.CharField(max_length=100, default='Kerala')
     country = models.CharField(max_length=100, default='India')
 
-    # ✅ Enable linking to projects and properties
+    # Relationships
     linked_properties = models.ManyToManyField('properties.Property', blank=True)
-    linked_projects = models.ManyToManyField('projects.Project', blank=True)
+    
 
+    # Audit info
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
 
     def clean(self):
         if self.type == self.COMPANY and not self.gst:

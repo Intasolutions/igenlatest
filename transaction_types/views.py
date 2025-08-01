@@ -17,15 +17,15 @@ class TransactionTypeViewSet(viewsets.ModelViewSet):
         else:
             queryset = TransactionType.objects.filter(company__in=user.companies.all())
 
-        # Optional filters from query params
+        # Optional filters from query params (case-insensitive)
         direction = self.request.query_params.get('direction')
         status_param = self.request.query_params.get('status')
 
         if direction:
-            queryset = queryset.filter(direction=direction)
+            queryset = queryset.filter(direction__iexact=direction)
 
         if status_param:
-            queryset = queryset.filter(status=status_param)
+            queryset = queryset.filter(status__iexact=status_param)
 
         return queryset
 

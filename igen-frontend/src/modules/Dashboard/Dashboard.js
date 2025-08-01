@@ -82,10 +82,10 @@ const pieData = {
     <div className="p-6 min-h-screen bg-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-4xl font-bold text-gray-800 tracking-tight">Main Dashboard</h1>
-        <div className="flex gap-2 items-center w-full md:w-auto">
+        {/* <div className="flex gap-2 items-center w-full md:w-auto">
           <Input placeholder="Search by date..." value={search} onChange={e => setSearch(e.target.value)} />
           <DateRangePicker value={dateRange} onChange={setDateRange} />
-        </div>
+        </div> */}
       </div>
 
       {/* Stat Cards */}

@@ -302,7 +302,7 @@ const handleExportToCSV = () => {
           initial="hidden"
           animate="visible"
         >
-          <DialogTitle sx={{ fontWeight: 600, fontSize: '1.25rem', bgcolor: '#f5f5f5', py: 2 }}>
+          <DialogTitle >
             {isEditMode ? 'Edit Entity' : 'Add New Entity'}
           </DialogTitle>
 

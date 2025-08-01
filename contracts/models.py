@@ -14,7 +14,6 @@ class Contract(models.Model):
     vendor = models.ForeignKey("vendors.Vendor", on_delete=models.CASCADE)
     cost_centre = models.ForeignKey("cost_centres.CostCentre", on_delete=models.CASCADE)
     entity = models.ForeignKey("entities.Entity", on_delete=models.CASCADE)
-    asset = models.ForeignKey("assets.Asset", on_delete=models.SET_NULL, null=True, blank=True)
     description = models.TextField()
     contract_date = models.DateField()
     start_date = models.DateField()

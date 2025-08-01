@@ -7,10 +7,10 @@ import API from '../../api/axios';
 
 const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
   const [formData, setFormData] = useState({
-    vendor_id: '',
-    cost_centre_id: '',
-    entity_id: '',
-    asset_id: '',
+    vendor: '',
+    cost_centre: '',
+    entity: '',
+    company: '',
     description: '',
     contract_date: '',
     start_date: '',
@@ -21,66 +21,161 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
   const [vendors, setVendors] = useState([]);
   const [costCentres, setCostCentres] = useState([]);
   const [entities, setEntities] = useState([]);
-  const [assets, setAssets] = useState([]);
+  const [companies, setCompanies] = useState([]);
+
+  const userRole = localStorage.getItem('role');
+  const userCompanyId = localStorage.getItem('company_id');
 
   useEffect(() => {
     API.get('vendors/').then(res => setVendors(res.data));
     API.get('cost-centres/').then(res => setCostCentres(res.data));
     API.get('entities/').then(res => setEntities(res.data));
-    API.get('assets/').then(res => setAssets(res.data));
-  }, []);
+    if (userRole === 'SUPER_USER') {
+      API.get('companies/').then(res => setCompanies(res.data));
+    }
+  }, [userRole]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: files ? files[0] : value,
+      [name]: files ? files[0] : value
     }));
   };
 
-  const handleSubmit = () => {
-    const payload = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value) payload.append(key, value);
+  const handleDropdownChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      vendor: '',
+      cost_centre: '',
+      entity: '',
+      company: '',
+      description: '',
+      contract_date: '',
+      start_date: '',
+      end_date: '',
+      document: null,
     });
+  };
+
+  const handleSubmit = () => {
+    const requiredFields = ['vendor', 'cost_centre', 'entity', 'contract_date', 'start_date', 'end_date'];
+    for (let field of requiredFields) {
+      if (!formData[field]) {
+        alert(`Please provide a valid ${field.replace('_', ' ')}.`);
+        return;
+      }
+    }
+
+    const payload = new FormData();
+    payload.append('vendor', formData.vendor);
+    payload.append('cost_centre', formData.cost_centre);
+    payload.append('entity', formData.entity);
+    payload.append('description', formData.description || '');
+    payload.append('contract_date', formData.contract_date);
+    payload.append('start_date', formData.start_date);
+    payload.append('end_date', formData.end_date);
+
+    if (formData.document) {
+      payload.append('document', formData.document);
+    }
+
+    const companyId = userRole === 'SUPER_USER' ? formData.company : userCompanyId;
+
+    if (!companyId) {
+      alert('Company information is missing.');
+      return;
+    }
+
+    payload.append('company', companyId);
 
     API.post('contracts/', payload)
       .then(() => {
-        onContractAdded(); // refresh the table
-        handleClose();     // close modal
+        onContractAdded();
+        resetForm();
+        handleClose();
       })
-      .catch(err => console.error('Error saving contract:', err));
+      .catch(err => {
+        console.error('Error:', err);
+        const error = err.response?.data;
+        if (error) {
+          alert("Error: " + JSON.stringify(error, null, 2));
+        } else {
+          alert('Unexpected error occurred.');
+        }
+      });
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={() => { resetForm(); handleClose(); }} fullWidth maxWidth="sm">
       <DialogTitle>Create New Contract</DialogTitle>
       <DialogContent dividers>
+
+        {userRole === 'SUPER_USER' && (
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="company-label">Company</InputLabel>
+            <Select
+              labelId="company-label"
+              value={formData.company}
+              onChange={(e) => handleDropdownChange('company', e.target.value)}
+              required
+            >
+              <MenuItem value="">Select Company</MenuItem>
+              {companies.map(c => (
+                <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
         <FormControl fullWidth margin="dense">
-          <InputLabel>Vendor</InputLabel>
-          <Select name="vendor_id" value={formData.vendor_id} onChange={handleChange} required>
-            {vendors.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}
+          <InputLabel id="vendor-label">Vendor</InputLabel>
+          <Select
+            labelId="vendor-label"
+            value={formData.vendor}
+            onChange={(e) => handleDropdownChange('vendor', e.target.value)}
+            required
+          >
+            <MenuItem value="">Select Vendor</MenuItem>
+            {vendors.map(v => (
+              <MenuItem key={v.id} value={v.id}>{v.vendor_name}</MenuItem>
+            ))}
           </Select>
         </FormControl>
 
         <FormControl fullWidth margin="dense">
-          <InputLabel>Cost Centre</InputLabel>
-          <Select name="cost_centre_id" value={formData.cost_centre_id} onChange={handleChange} required>
-            {costCentres.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+          <InputLabel id="cost-centre-label">Cost Centre</InputLabel>
+          <Select
+            labelId="cost-centre-label"
+            value={formData.cost_centre}
+            onChange={(e) => handleDropdownChange('cost_centre', e.target.value)}
+            required
+          >
+            <MenuItem value="">Select Cost Centre</MenuItem>
+            {costCentres.map(c => (
+              <MenuItem key={c.cost_centre_id} value={c.cost_centre_id}>{c.name}</MenuItem>
+            ))}
           </Select>
         </FormControl>
 
         <FormControl fullWidth margin="dense">
-          <InputLabel>Entity</InputLabel>
-          <Select name="entity_id" value={formData.entity_id} onChange={handleChange} required>
-            {entities.map(e => <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth margin="dense">
-          <InputLabel>Asset (optional)</InputLabel>
-          <Select name="asset_id" value={formData.asset_id} onChange={handleChange}>
-            {assets.map(a => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          <InputLabel id="entity-label">Entity</InputLabel>
+          <Select
+            labelId="entity-label"
+            value={formData.entity}
+            onChange={(e) => handleDropdownChange('entity', e.target.value)}
+            required
+          >
+            <MenuItem value="">Select Entity</MenuItem>
+            {entities.map(e => (
+              <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>
+            ))}
           </Select>
         </FormControl>
 
@@ -92,8 +187,8 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
           fullWidth
           margin="dense"
           multiline
-          required
         />
+
         <TextField
           type="date"
           label="Contract Date"
@@ -103,8 +198,8 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
           fullWidth
           margin="dense"
           InputLabelProps={{ shrink: true }}
-          required
         />
+
         <TextField
           type="date"
           label="Start Date"
@@ -114,8 +209,8 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
           fullWidth
           margin="dense"
           InputLabelProps={{ shrink: true }}
-          required
         />
+
         <TextField
           type="date"
           label="End Date"
@@ -125,8 +220,8 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
           fullWidth
           margin="dense"
           InputLabelProps={{ shrink: true }}
-          required
         />
+
         <TextField
           type="file"
           name="document"
@@ -135,9 +230,10 @@ const AddContractDialog = ({ open, handleClose, onContractAdded }) => {
           margin="dense"
           inputProps={{ accept: ".pdf,.jpg,.jpeg,.png" }}
         />
+
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={() => { resetForm(); handleClose(); }}>Cancel</Button>
         <Button variant="contained" onClick={handleSubmit}>Save Contract</Button>
       </DialogActions>
     </Dialog>

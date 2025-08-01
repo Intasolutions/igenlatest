@@ -7,6 +7,11 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
+    # Admin interface enhancement (must be first for priority override)
+    'admin_interface',
+    'colorfield',
+
+    # Core apps
     'users',
     'companies',
     'django.contrib.admin',
@@ -15,12 +20,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Third-party apps
     'rest_framework',
     'corsheaders',
-
-    # Existing apps
-    
     'django_extensions',
+    'django_filters',
+
+    # Functional modules
     'banks',
     'cost_centres',
     'transaction_types',
@@ -30,15 +37,15 @@ INSTALLED_APPS = [
     'entities',
     'receipts',
     'assets',
-    'django_filters',
-
 
     # Newly added apps for BRD completion
     'contracts',
     'vendors',
     'reports',
     'contacts',
+    'cash_ledger',
 ]
+
 
 
 AUTH_USER_MODEL = 'users.User'
@@ -104,7 +111,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 
-# Django REST Framework + JWT config
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -113,6 +119,21 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'USER_ID_FIELD': 'user_id',
+    'USER_ID_CLAIM': 'user_id',
+
+    # ✅ Custom serializer to include company_id and role in response
+    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer',
+}
+
 
 # Allow React app on localhost
 CORS_ALLOWED_ORIGINS = [

@@ -4,16 +4,27 @@ import {
   Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Card, CardContent, Typography, IconButton,
   Snackbar, Alert, Tooltip, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TablePagination
+  TableContainer, TableHead, TableRow, TablePagination,Slide
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
+import SearchBar from '../../components/SearchBar';
+import ConfirmDialog from '../../components/ConfirmDialog';
+
+
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />; 
+});
 
 export default function CostCentreManagement() {
-  const [companies, setCompanies] = useState([]);
+  const [companies, setCompanies] = useState([])
   const [costCentres, setCostCentres] = useState([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const[searchQuery, setSearchQuery] = useState('')
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+const [selectedCostCentre, setSelectedCostCentre] = useState(null);
+
 
   const [form, setForm] = useState({
     company: '',
@@ -84,15 +95,35 @@ export default function CostCentreManagement() {
       return;
     }
     try {
-      await API.post('cost-centres/', form);
+      await API.post('cost-centres/', form)
       setSnackbar({ open: true, message: 'Cost Centre added successfully!', severity: 'success' });
       fetchCostCentres();
       setOpen(false);
       setForm({ company: '', name: '', transaction_direction: '', notes: '' });
       setFormErrors({});
-    } catch (err) {
-      setSnackbar({ open: true, message: err.response?.data?.detail || 'Failed to add cost centre', severity: 'error' });
+    }catch (err) {
+ 
+  if (err.response?.status == 400) {
+    
+    const backendErrors = {name:["The fields company, name must make a unique set."]};
+    const newFormErrors = { ...formErrors };
+   
+
+    if (backendErrors.name) {
+      newFormErrors.name = backendErrors.name[0]; 
+
     }
+
+    setFormErrors(newFormErrors);
+  } else {
+    setSnackbar({
+      open: true,
+      message: err.response?.data?.detail || 'Failed to add cost centre',
+      severity: 'error',
+    });
+  }
+}
+
   };
 
   const handleRealTimeValidation = (field, value, setForm, form, setErrors) => {
@@ -126,8 +157,25 @@ export default function CostCentreManagement() {
       fetchCostCentres();
       setEditOpen(false);
     } catch (err) {
-      setSnackbar({ open: true, message: err.response?.data?.detail || 'Failed to update cost centre', severity: 'error' });
+  if (err.response?.status === 400) {
+    const backendErrors = err.response.data;
+    const newFormErrors = { ...editFormErrors };
+
+    if (backendErrors.name) {
+      newFormErrors.name = backendErrors.name[0]; 
+        setSnackbar({ open: true, message: backendErrors.name[0], severity: 'error' });  // ✅ Inline duplicate name error
     }
+
+    setEditFormErrors(newFormErrors);
+  } else {
+    setSnackbar({
+      open: true,
+      message: err.response?.data?.detail || 'Failed to update cost centre',
+      severity: 'error',
+    });
+  }
+}
+
   };
 
   const deleteCostCentre = async (id) => {
@@ -140,10 +188,46 @@ export default function CostCentreManagement() {
     }
   };
 
+
+const handleConfirmAction = async () => {
+  if (!selectedCostCentre) return;
+
+  try {
+    if (selectedCostCentre.is_active) {
+      // Soft delete
+      await API.delete(`cost-centres/${selectedCostCentre.cost_centre_id}/`);
+      setSnackbar({ open: true, message: 'Cost Centre deactivated.', severity: 'success' });
+    } else {
+      // Reactivate
+      await API.patch(`cost-centres/${selectedCostCentre.cost_centre_id}/`, { is_active: true });
+      setSnackbar({ open: true, message: 'Cost Centre reactivated.', severity: 'success' });
+    }
+
+    fetchCostCentres();
+  } catch (err) {
+    setSnackbar({ open: true, message: 'Action failed.', severity: 'error' });
+  } finally {
+    setConfirmDialogOpen(false);
+    setSelectedCostCentre(null);
+  }
+};
+
+
+    const filteredcostcenter = costCentres.filter((c) =>
+ c.name.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
   return (
-    <div className="p-[95px]">
-      <div className="flex justify-between items-center mb-6">
-        <Typography variant="h5" fontWeight="bold">Cost Centre Management</Typography>
+    <div className="p-[35px]">
+         <Typography variant="h5" fontWeight="bold">Cost Centre Management</Typography>
+      <div className="flex justify-between items-center mb-6 mt-6">
+         <SearchBar
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  label="Search User"
+                  placeholder="Enter Account Name to search"
+                />
+     
         <Button variant="contained" color="primary" onClick={() => setOpen(true)}>Add Cost Centre</Button>
       </div>
 
@@ -163,20 +247,33 @@ export default function CostCentreManagement() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {costCentres.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((c) => (
-                  <TableRow key={c.cost_centre_id} hover>
-                    <TableCell>{c.cost_centre_id}</TableCell>
+                {filteredcostcenter.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((c, index) => (
+             <TableRow
+  key={c.cost_centre_id}
+  hover
+  sx={{
+    backgroundColor: c.is_active ? '#e8f5e9' : '#fffde7' // ✅ green for active, yellow for inactive
+  }}
+>
+                    <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                     <TableCell>{c.company_name}</TableCell>
                     <TableCell>{c.name}</TableCell>
                     <TableCell>{c.transaction_direction}</TableCell>
                     <TableCell>{c.notes}</TableCell>
                     <TableCell>{c.is_active ? 'Yes' : 'No'}</TableCell>
                     <TableCell align="center">
-                      <Tooltip title="Delete" arrow>
-                        <IconButton color="error" onClick={() => deleteCostCentre(c.cost_centre_id)}>
-                          <Delete />
-                        </IconButton>
-                      </Tooltip>
+                    <Tooltip title={c.is_active ? "Deactivate" : "Reactivate"} arrow>
+  <IconButton
+    color={c.is_active ? "error" : "success"}
+    onClick={() => {
+      setSelectedCostCentre(c);
+      setConfirmDialogOpen(true);
+    }}
+  >
+    <Delete />
+  </IconButton>
+</Tooltip>
+
                       <Tooltip title="Edit" arrow>
                         <IconButton color="primary" onClick={() => openEditModal(c)}>
                           <Edit />
@@ -190,7 +287,7 @@ export default function CostCentreManagement() {
           </TableContainer>
           <TablePagination
             component="div"
-            count={costCentres.length}
+            count={filteredcostcenter.length}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
@@ -203,9 +300,11 @@ export default function CostCentreManagement() {
       </Card>
 
       {/* Add Dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm"  TransitionComponent={Transition} 
+       keepMounted 
+       PaperProps={{ sx: { borderRadius: 3, p: 2 } }} >
         <DialogTitle>Add Cost Centre</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent>
           <TextField
             select fullWidth margin="dense" label="Company"
             value={form.company}
@@ -222,7 +321,7 @@ export default function CostCentreManagement() {
             fullWidth margin="dense" label="Name"
             value={form.name}
             onChange={(e) => handleRealTimeValidation('name', e.target.value, setForm, form, setFormErrors)}
-            error={!!formErrors.name}
+            error={Boolean(formErrors.name)}
             helperText={formErrors.name}
           />
 
@@ -300,6 +399,17 @@ export default function CostCentreManagement() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+            <ConfirmDialog
+  open={confirmDialogOpen}
+  onClose={() => setConfirmDialogOpen(false)}
+  onConfirm={handleConfirmAction}
+  title={selectedCostCentre?.is_active ? 'Deactivate Cost Centre?' : 'Reactivate Cost Centre?'}
+  content={`Are you sure you want to ${selectedCostCentre?.is_active ? 'deactivate' : 'reactivate'} this bank: ${selectedCostCentre?.name}?`}
+  confirmLabel={selectedCostCentre?.is_active ? 'Deactivate' : 'Reactivate'}
+/>
+
+
     </div>
   );
 }

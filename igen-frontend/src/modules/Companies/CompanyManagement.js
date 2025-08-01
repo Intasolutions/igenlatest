@@ -219,9 +219,9 @@ export default function CompanyManagement() {
         hidden
         onChange={handleUploadCSV}
       />
-      <Button variant="outlined" component="span">
+      {/* <Button variant="outlined" component="span">
         Upload CSV
-      </Button>
+      </Button> */}
     </label>
   </div>
 </div>

@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
-from django.contrib.auth.hashers import make_password
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import User
 from .serializers import UserSerializer
@@ -16,6 +16,8 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['role']
 
     def create(self, request, *args, **kwargs):
         """
@@ -31,7 +33,6 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Let serializer hash the password using set_password()
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
@@ -94,7 +95,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            user.set_password(new_password)  # 🔐 Use set_password here
+            user.set_password(new_password)
             user.save()
 
             return Response({'detail': 'Password reset successfully'})

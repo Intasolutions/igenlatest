@@ -1,7 +1,8 @@
 import uuid
 from django.db import models
-from django.core.validators import RegexValidator, EmailValidator
-
+from django.core.validators import RegexValidator
+from companies.models import Company
+from users.models import User  # Assumes User model has UUID as primary key
 
 class Vendor(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -49,9 +50,7 @@ class Vendor(models.Model):
     )
 
     email = models.EmailField(blank=True, null=True)
-
     bank_name = models.CharField(max_length=255)
-
     bank_account = models.CharField(max_length=30)
 
     ifsc_code = models.CharField(
@@ -67,9 +66,11 @@ class Vendor(models.Model):
     address = models.TextField()
     notes = models.TextField(blank=True, null=True)
 
-    company_id = models.UUIDField()  # Should ideally be a FK to a Company model
-    created_by = models.UUIDField()  # Should ideally be a FK to a User model
+    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
     created_on = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.vendor_name

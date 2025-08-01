@@ -1,12 +1,8 @@
 from rest_framework import serializers
 from .models import Contact
-from projects.models import Project
+
 from properties.models import Property
 
-class ProjectSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = ['id', 'name']
 
 class PropertySerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,21 +10,29 @@ class PropertySerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 class ContactSerializer(serializers.ModelSerializer):
-    # Read-only fields (for display)
-    linked_projects = ProjectSerializer(many=True, read_only=True)
+    # Read-only nested output
+  
     linked_properties = PropertySerializer(many=True, read_only=True)
 
-    # Write-only fields (for submission)
-    linked_project_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Project.objects.all(), write_only=True, source='linked_projects'
-    )
+    # Write-only related fields
+   
     linked_property_ids = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Property.objects.all(), write_only=True, source='linked_properties'
     )
 
+    created_by = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Contact
-        fields = '__all__'
+        fields = [
+            'contact_id', 'full_name', 'type', 'stakeholder_types',
+            'company', 'phone', 'alternate_phone', 'email',
+            'address', 'pan', 'gst', 'notes',
+            'landmark', 'pincode', 'city', 'district', 'state', 'country',
+             'linked_properties',
+             'linked_property_ids',
+            'created_at', 'updated_at', 'created_by','is_active',
+        ]
 
     def validate_phone(self, value):
         if not value.isdigit() or len(value) != 10:
@@ -49,7 +53,6 @@ class ContactSerializer(serializers.ModelSerializer):
 
         if not stakeholder_types:
             raise serializers.ValidationError({'stakeholder_types': "At least one stakeholder type is required."})
-
         if contact_type == 'Company' and not gst:
             raise serializers.ValidationError({'gst': "GST number is required for Company type contacts."})
 

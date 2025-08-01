@@ -39,21 +39,33 @@ export default function Login() {
         password,
       });
 
-      const { access, refresh } = res.data;
+      const {
+        access,
+        refresh,
+        role,
+        user_id: responseUserId,
+        company_id,
+      } = res.data;
 
       localStorage.setItem('access', access);
       localStorage.setItem('refresh', refresh);
 
       const decoded = jwtDecode(access);
-      const role = decoded?.role || 'UNKNOWN';
-      localStorage.setItem('role', role);
+      const decodedRole = decoded?.role || 'UNKNOWN';
 
-      console.log('✅ Logged in as:', role);
+      // Log the full response
+      console.log('🔍 Login Response:', res.data);
+
+      localStorage.setItem('role', role || decodedRole);
+      if (responseUserId) localStorage.setItem('user_id', responseUserId);
+      if (company_id) localStorage.setItem('company_id', company_id);
+
+      console.log('✅ Logged in as:', role || decodedRole);
 
       setType('success');
       setMessage('Login successful! Redirecting...');
 
-      setTimeout(() => redirectToDashboard(role), 1200);
+      setTimeout(() => redirectToDashboard(role || decodedRole), 1200);
     } catch (err) {
       console.error('Login error:', err);
       setType('error');

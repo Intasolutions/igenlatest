@@ -19,12 +19,15 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Stack } from '@mui/material';
 import { TablePagination } from '@mui/material';
+import SearchBar from '../../components/SearchBar';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
 
   const [form, setForm] = useState({
     user_id: '',
@@ -230,13 +233,31 @@ export default function UserManagement() {
     setPage(0);
   };
 
+  const filteredUsers = users.filter((u) =>
+  u.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
+
 
 
   return (
-    <div style={{ padding: 30, backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
-       <div style={{ padding: 40, backgroundColor: '#F9FAFB', minHeight: '100vh' }}>
+    <div className='p-[35px]'>
+       
       <Typography variant="h5" gutterBottom>User Management</Typography>
-<Button
+      <div className="flex justify-between items-center mb-4 mt-6">
+          <div className="flex-1 max-w-sm">
+<SearchBar
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+  label="Search User"
+  placeholder="Enter name to search"
+/>
+
+  
+
+          </div>
+<div className='flex gap-3'>
+  <Button
   variant="contained"
   startIcon={<PersonAddIcon />}
   onClick={() => {
@@ -255,6 +276,8 @@ export default function UserManagement() {
 >
   Add User
 </Button>
+</div>
+</div>
 
 
 
@@ -274,14 +297,24 @@ export default function UserManagement() {
       </TableRow>
     </TableHead>
     <TableBody>
-      {users.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((u, index) => (
+      {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((u, index) => (
         <TableRow key={u.id} hover>
           <TableCell>{page * rowsPerPage + index + 1}</TableCell>
           <TableCell>{u.full_name}</TableCell>
           <TableCell>{u.user_id}</TableCell>
-          <TableCell>
-            <Chip label={u.role} size="small"  />
-          </TableCell>
+         <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Chip label={u.role} size="small" />
+  <Chip
+    label={u.is_active ? 'Active' : 'Inactive'}
+    size="small"
+    sx={{
+      bgcolor: u.is_active ? '#d0f0c0' : '#fff8dc',
+      color: u.is_active ? '#388e3c' : '#f57c00',
+      fontWeight: 500
+    }}
+  />
+</TableCell>
+
           <TableCell>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {u.companies.map((c) => (
@@ -305,11 +338,17 @@ export default function UserManagement() {
                 <EditIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Deactivate User" arrow>
-              <IconButton onClick={() => deactivateUser(u.id)}>
-                <DeleteIcon color="error" />
-              </IconButton>
-            </Tooltip>
+            <Tooltip title={u.is_active ? "Deactivate User" : "Already Deactivated"} arrow>
+  <span>
+    <IconButton
+      onClick={() => deactivateUser(u.id)}
+      disabled={!u.is_active}
+    >
+      <DeleteIcon color={u.is_active ? 'error' : 'disabled'} />
+    </IconButton>
+  </span>
+</Tooltip>
+
           </TableCell>
         </TableRow>
       ))}
@@ -323,7 +362,7 @@ export default function UserManagement() {
    
       <TablePagination
   component="div"
-  count={users.length}
+  count={filteredUsers.length}
   page={page}
   onPageChange={handleChangePage}
   rowsPerPage={rowsPerPage}
@@ -633,7 +672,7 @@ export default function UserManagement() {
 </Dialog>
 
 
-    </div>
+    
      <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

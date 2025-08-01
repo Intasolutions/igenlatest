@@ -22,7 +22,9 @@ urlpatterns = [
     path('api/', include('assets.urls')),  # instead of 'api/assets/'
     path('api/', include('contacts.urls')),
     path('api/', include('vendors.urls')),
-    path('api/contracts/', include('contracts.urls')),
+    path('api/', include('contracts.urls')),
+    path('api/cash-ledger/', include('cash_ledger.urls')),
+    path('api/reports/', include('reports.urls')),
 
 
 

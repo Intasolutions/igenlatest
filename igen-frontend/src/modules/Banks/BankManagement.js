@@ -5,10 +5,19 @@ import {
   TextField, MenuItem, FormControl, InputLabel, Select,
   Card, CardContent, Typography, IconButton, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert,
-  Tooltip
+  Tooltip,Slide
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import { TablePagination } from '@mui/material';
+import SearchBar from '../../components/SearchBar';
+import ConfirmDialog from '../../components/ConfirmDialog';
+
+
+
+
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />; 
+});
 
 
 export default function BankManagement() {
@@ -19,6 +28,13 @@ export default function BankManagement() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [page, setPage] = useState(0);
 const [rowsPerPage, setRowsPerPage] = useState(5);
+const [searchQuery, setSearchQuery] = useState('');
+const [confirmOpen, setConfirmOpen] = useState(false);
+const [selectedBank, setSelectedBank] = useState(null);
+
+
+
+
 
 const handleChangePage = (event, newPage) => {
   setPage(newPage);
@@ -53,7 +69,7 @@ const handleChangeRowsPerPage = (event) => {
 
   const fetchBanks = async () => {
     try {
-      const res = await API.get('banks/');
+     const res = await API.get('banks/?include_inactive=true'); 
       setBanks(res.data);
     } catch {
       setSnackbar({ open: true, message: 'Error fetching banks', severity: 'error' });
@@ -152,20 +168,56 @@ const handleAddDialogOpen = () => {
     }
   };
 
-  const deactivateBank = async (id) => {
-    try {
-      await API.delete(`banks/${id}/`);
-      setSnackbar({ open: true, message: 'Bank deactivated successfully!', severity: 'success' });
-      fetchBanks();
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to deactivate bank', severity: 'error' });
-    }
-  };
+const handleConfirmToggle = (bank) => {
+  setSelectedBank(bank);
+  setConfirmOpen(true);
+};
+
+const confirmToggleStatus = async () => {
+  if (!selectedBank) return;
+
+  const updatedStatus = !selectedBank.is_active;
+
+  try {
+    await API.patch(`banks/${selectedBank.id}/`, { is_active: updatedStatus });
+    setSnackbar({
+      open: true,
+      message: updatedStatus ? 'Bank reactivated successfully!' : 'Bank deactivated successfully!',
+      severity: 'success',
+    });
+    fetchBanks();
+  } catch {
+    setSnackbar({
+      open: true,
+      message: updatedStatus ? 'Failed to reactivate bank' : 'Failed to deactivate bank',
+      severity: 'error',
+    });
+  } finally {
+    setConfirmOpen(false);
+    setSelectedBank(null);
+  }
+};
+
+
+    const filteredbank = banks.filter((b) =>
+ b.account_name.toLowerCase().includes(searchQuery.toLowerCase())
+);
 
   return (
-    <div className="p-[95px]">
-      <div className="flex justify-between items-center mb-6">
-        <Typography variant="h5" fontWeight="bold">Bank Management</Typography>
+    <div className="p-[35px]">
+      <Typography variant="h5" fontWeight="bold">Bank Management</Typography>
+      <div className="flex justify-between items-center mb-6 mt-6">
+         <div className="flex-1 max-w-sm">
+        <SearchBar
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          label="Search User"
+          placeholder="Enter Account Name to search"
+        />
+        
+          
+        
+                  </div>
       <Button variant="contained" color="primary" onClick={handleAddDialogOpen}>Add Bank</Button>
 
       </div>
@@ -186,10 +238,18 @@ const handleAddDialogOpen = () => {
       </TableRow>
     </TableHead>
     <TableBody>
-      {banks
+      {filteredbank
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
         .map((b, index) => (
-          <TableRow key={b.id} hover sx={{ backgroundColor: index % 2 === 0 ? '#fafafa' : 'white' }}>
+         <TableRow
+  key={b.id}
+  hover
+  sx={{
+    backgroundColor: b.is_active ? '#e8f5e9' : '#fffde7', // green = active, yellow = inactive
+    transition: 'background-color 0.3s ease',
+  }}
+>
+
             <TableCell>{page * rowsPerPage + index + 1}</TableCell>
             <TableCell>{b.company?.name}</TableCell>
             <TableCell>{b.account_name}</TableCell>
@@ -197,11 +257,16 @@ const handleAddDialogOpen = () => {
             <TableCell>{b.bank_name}</TableCell>
             <TableCell>{b.ifsc}</TableCell>
             <TableCell align="center">
-              <Tooltip title="Deactivate Bank" arrow>
-                <IconButton color="error" onClick={() => deactivateBank(b.id)}>
-                  <Delete />
-                </IconButton>
-              </Tooltip>
+          <Tooltip title={b.is_active ? 'Deactivate Bank' : 'Reactivate Bank'} arrow>
+  <span>
+    <IconButton
+      color={b.is_active ? 'error' : 'success'}
+      onClick={() => handleConfirmToggle(b)}
+    >
+      <Delete />
+    </IconButton>
+  </span>
+</Tooltip>
               <Tooltip title="Edit Bank" arrow>
                 <IconButton color="primary" onClick={() => openEditModal(b)}>
                   <Edit />
@@ -215,7 +280,7 @@ const handleAddDialogOpen = () => {
 
   <TablePagination
     component="div"
-    count={banks.length}
+    count={filteredbank.length}
     page={page}
     onPageChange={handleChangePage}
     rowsPerPage={rowsPerPage}
@@ -228,10 +293,12 @@ const handleAddDialogOpen = () => {
       </Card>
 
       {/* Add Bank Dialog */}
-  <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+  <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm"  TransitionComponent={Transition} 
+       keepMounted 
+       PaperProps={{ sx: { borderRadius: 3, p: 2 } }}>
   <DialogTitle>Add New Bank</DialogTitle>
-  <DialogContent dividers>
-    <FormControl fullWidth margin="dense" error={!!formErrors.company_id}>
+  <DialogContent >
+    <FormControl fullWidth margin="normal" error={!!formErrors.company_id}>
       <InputLabel id="add-company-label">Company</InputLabel>
       <Select
         labelId="add-company-label"
@@ -257,7 +324,7 @@ const handleAddDialogOpen = () => {
     </FormControl>
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Account Name"
       fullWidth
       value={form.account_name}
@@ -274,7 +341,7 @@ const handleAddDialogOpen = () => {
     />
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Account Number"
       fullWidth
       value={form.account_number}
@@ -291,7 +358,7 @@ const handleAddDialogOpen = () => {
     />
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Bank Name"
       fullWidth
       value={form.bank_name}
@@ -309,7 +376,7 @@ const handleAddDialogOpen = () => {
 <TextField
   label="IFSC"
   fullWidth
-  margin="dense"
+  margin="normal"
   value={form.ifsc}
   onChange={(e) => setForm({ ...form, ifsc: e.target.value.toUpperCase() })} // auto-uppercase
   onBlur={() => {
@@ -338,7 +405,7 @@ const handleAddDialogOpen = () => {
    <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
   <DialogTitle>Edit Bank</DialogTitle>
   <DialogContent dividers>
-    <FormControl fullWidth margin="dense" error={!!editFormErrors.company_id}>
+    <FormControl fullWidth margin="normal" error={!!editFormErrors.company_id}>
       <InputLabel id="edit-company-label">Company</InputLabel>
       <Select
         labelId="edit-company-label"
@@ -364,7 +431,7 @@ const handleAddDialogOpen = () => {
     </FormControl>
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Account Name"
       fullWidth
       value={editForm.account_name}
@@ -381,7 +448,7 @@ const handleAddDialogOpen = () => {
     />
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Account Number"
       fullWidth
       value={editForm.account_number}
@@ -398,7 +465,7 @@ const handleAddDialogOpen = () => {
     />
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="Bank Name"
       fullWidth
       value={editForm.bank_name}
@@ -415,7 +482,7 @@ const handleAddDialogOpen = () => {
     />
 
     <TextField
-      margin="dense"
+      margin="normal"
       label="IFSC"
       fullWidth
       value={editForm.ifsc}
@@ -449,6 +516,15 @@ const handleAddDialogOpen = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+<ConfirmDialog
+  open={confirmOpen}
+  onClose={() => setConfirmOpen(false)}
+  onConfirm={confirmToggleStatus}
+  title={selectedBank?.is_active ? 'Deactivate Bank' : 'Reactivate Bank'}
+  content={`Are you sure you want to ${selectedBank?.is_active ? 'deactivate' : 'reactivate'} this bank: ${selectedBank?.account_name}?`}
+/>
+
+
     </div>
   );
 }

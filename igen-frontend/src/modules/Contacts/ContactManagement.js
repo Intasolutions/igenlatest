@@ -34,7 +34,6 @@ const defaultForm = {
   pan: '',
   gst: '',
   notes: '',
-  linked_projects: [],
   linked_properties: []
 };
 
@@ -45,31 +44,23 @@ export default function ContactManagement() {
   const [editingId, setEditingId] = useState(null);
   const [csvFile, setCsvFile] = useState(null);
   const [search, setSearch] = useState('');
+  const [selectedStakeholder, setSelectedStakeholder] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [projects, setProjects] = useState([]);
   const [properties, setProperties] = useState([]);
 
   useEffect(() => {
     fetchContacts();
-    fetchProjects();
     fetchProperties();
   }, []);
 
   const fetchContacts = async () => {
     try {
-      const res = await API.get('contacts/');
+      const params = {};
+      if (selectedStakeholder) params.stakeholder_types = selectedStakeholder;
+      const res = await API.get('contacts/', { params });
       setContacts(Array.isArray(res.data) ? res.data : res.data.results || []);
     } catch (err) {
       showSnackbar('Error fetching contacts', 'error');
-    }
-  };
-
-  const fetchProjects = async () => {
-    try {
-      const res = await API.get('projects/');
-      setProjects(res.data);
-    } catch (err) {
-      showSnackbar('Failed to load projects', 'error');
     }
   };
 
@@ -91,18 +82,25 @@ export default function ContactManagement() {
       showSnackbar('GST number is required for Company type', 'warning');
       return;
     }
+
+    const payload = {
+      ...form,
+      linked_property_ids: form.linked_properties,
+    };
+
     try {
       if (editingId) {
-        await API.put(`contacts/${editingId}/`, form);
+        await API.put(`contacts/${editingId}/`, payload);
         showSnackbar('Contact updated');
       } else {
-        await API.post('contacts/', form);
+        await API.post('contacts/', payload);
         showSnackbar('Contact added');
       }
       fetchContacts();
       setOpen(false);
       resetForm();
     } catch (err) {
+      console.error('Save failed', err);
       showSnackbar('Save failed', 'error');
     }
   };
@@ -166,7 +164,7 @@ export default function ContactManagement() {
     <div className="p-[35px]">
       <Typography variant="h5" fontWeight={600}>Contact Management</Typography>
 
-      <div className="flex justify-between items-center my-6">
+      <div className="flex justify-between items-center my-6 gap-4 flex-wrap">
         <TextField
           label="Search by Name or Email"
           variant="outlined"
@@ -174,6 +172,20 @@ export default function ContactManagement() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <FormControl size="small" style={{ minWidth: 200 }}>
+          <InputLabel>Stakeholder Filter</InputLabel>
+          <Select
+            value={selectedStakeholder}
+            onChange={(e) => setSelectedStakeholder(e.target.value)}
+            displayEmpty
+            input={<OutlinedInput label="Stakeholder Filter" />}
+          >
+            <MenuItem value="">All</MenuItem>
+            {stakeholderOptions.map(type => (
+              <MenuItem key={type} value={type}>{type}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <div className="flex gap-2">
           <Button variant="contained" startIcon={<UploadFileIcon />} component="label">
             Upload CSV
@@ -201,7 +213,6 @@ export default function ContactManagement() {
                   <TableCell>PAN</TableCell>
                   <TableCell>GST</TableCell>
                   <TableCell>Notes</TableCell>
-                  <TableCell>Linked Projects</TableCell>
                   <TableCell>Linked Properties</TableCell>
                   <TableCell align="center">Actions</TableCell>
                 </TableRow>
@@ -221,12 +232,8 @@ export default function ContactManagement() {
                     <TableCell>{c.gst}</TableCell>
                     <TableCell>{c.notes}</TableCell>
                     <TableCell>
-  {(c.linked_projects || []).map(p => typeof p === 'object' ? p.name : (projects.find(x => x.id === p)?.name || p)).join(', ')}
-</TableCell>
-<TableCell>
-  {(c.linked_properties || []).map(p => typeof p === 'object' ? p.name : (properties.find(x => x.id === p)?.name || p)).join(', ')}
-</TableCell>
-
+                      {(c.linked_properties || []).map(p => typeof p === 'object' ? p.name : (properties.find(x => x.id === p)?.name || p)).join(', ')}
+                    </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Edit">
                         <IconButton onClick={() => { setForm(c); setEditingId(c.contact_id); setOpen(true); }}>
@@ -284,28 +291,6 @@ export default function ContactManagement() {
             <TextField label="GST" fullWidth margin="normal" value={form.gst} onChange={(e) => setForm({ ...form, gst: e.target.value })} />
           )}
           <TextField label="Notes" fullWidth multiline rows={2} margin="normal" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Linked Projects</InputLabel>
-            <Select
-              multiple
-              value={form.linked_projects}
-              onChange={(e) => setForm({ ...form, linked_projects: e.target.value })}
-              input={<OutlinedInput label="Linked Projects" />}
-              renderValue={(selected) => selected.map(id => {
-                const p = projects.find(x => x.id === id);
-                return p?.name || id;
-              }).join(', ')}
-            >
-              {projects.map(project => (
-                <MenuItem key={project.id} value={project.id}>
-                  <Checkbox checked={form.linked_projects.includes(project.id)} />
-                  <ListItemText primary={project.name} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
           <FormControl fullWidth margin="normal">
             <InputLabel>Linked Properties</InputLabel>
             <Select

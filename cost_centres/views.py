@@ -12,7 +12,7 @@ class CostCentreViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'SUPER_USER':
-            return CostCentre.objects.filter(is_active=True)
+            return CostCentre.objects.all()
         return CostCentre.objects.filter(company__in=user.companies.all(), is_active=True)
 
     def create(self, request, *args, **kwargs):

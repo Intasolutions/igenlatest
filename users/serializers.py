@@ -3,10 +3,12 @@ from rest_framework import serializers
 from .models import User
 from companies.models import Company
 
+
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = ['id', 'name']
+
 
 class UserSerializer(serializers.ModelSerializer):
     companies = CompanySerializer(many=True, read_only=True)
@@ -15,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
         many=True,
         write_only=True,
         source='companies',
-        required=False,  # optional during user creation/edit
+        required=False,
     )
     password = serializers.CharField(write_only=True, required=True)
 
@@ -53,26 +55,35 @@ class UserSerializer(serializers.ModelSerializer):
 
         return instance
 
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    username_field = 'user_id'  # JWT uses user_id for login
+    username_field = 'user_id'
 
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         token['role'] = user.role
+        token['user_id'] = user.user_id
+
+        # 🔐 If SUPER_USER, skip company enforcement
+        if user.role == 'SUPER_USER':
+            token['company_id'] = None
+        else:
+            companies = user.companies.all()
+            token['company_id'] = companies[0].id if companies.exists() else None
+
         return token
 
     def validate(self, attrs):
-     data = super().validate(attrs)
-     data['user_id'] = self.user.user_id
+        data = super().validate(attrs)
+        data['user_id'] = self.user.user_id
+        data['role'] = self.user.role
 
-    # Return the first company (if user is linked to any)
-     companies = self.user.companies.all()
-     data['company_id'] = companies[0].id if companies else None
+        # 🔐 If SUPER_USER, no company is required
+        if self.user.role == 'SUPER_USER':
+            data['company_id'] = None
+        else:
+            companies = self.user.companies.all()
+            data['company_id'] = companies[0].id if companies.exists() else None
 
-     return data
-
-
-
-
-
+        return data

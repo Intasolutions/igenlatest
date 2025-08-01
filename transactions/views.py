@@ -1,22 +1,36 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
-from .models import (
-    Transaction, ClassifiedTransaction,
-    Company, BankAccount, CostCentre, TransactionType
-)
+from .models import Transaction, ClassifiedTransaction
+from companies.models import Company
+from banks.models import BankAccount
+from cost_centres.models import CostCentre
+from transaction_types.models import TransactionType
 from .serializers import TransactionSerializer, ClassifiedTransactionSerializer
 import csv
 from io import TextIOWrapper
-from django.db.models import Sum
+from django.db.models import Sum, DecimalField, Exists, OuterRef
 from django.db.models.functions import Coalesce
-from django.db.models import DecimalField
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
-    queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        """
+        By default, return only unclassified transactions.
+        If ?show_all=true, return all.
+        """
+        queryset = Transaction.objects.all()
+
+        if self.request.query_params.get('show_all') == 'true':
+            return queryset
+
+        classified_subquery = ClassifiedTransaction.objects.filter(transaction=OuterRef('pk'))
+        return queryset.annotate(
+            has_classification=Exists(classified_subquery)
+        ).filter(has_classification=False)
 
     @action(detail=True, methods=["get"])
     def classified_entries(self, request, pk=None):
@@ -28,6 +42,26 @@ class TransactionViewSet(viewsets.ModelViewSet):
         classified = ClassifiedTransaction.objects.filter(transaction=transaction)
         serializer = ClassifiedTransactionSerializer(classified, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"])
+    def classification_status(self, request, pk=None):
+        """
+        Returns classification status and summary.
+        """
+        try:
+            transaction = self.get_object()
+        except Transaction.DoesNotExist:
+            return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        splits = ClassifiedTransaction.objects.filter(transaction=transaction)
+        total_split = splits.aggregate(total=Sum('amount'))['total'] or 0
+
+        return Response({
+            "is_classified": splits.exists(),
+            "split_matches": float(total_split) == float(transaction.amount),
+            "total_split": total_split,
+            "original_amount": transaction.amount
+        })
 
 
 class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
@@ -54,6 +88,13 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
         except Transaction.DoesNotExist:
             return Response({"error": "Transaction not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if ClassifiedTransaction.objects.filter(transaction=transaction).exists():
+            if request.query_params.get('force') != 'true':
+                return Response({"error": "Transaction already classified. Use ?force=true to overwrite."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            # Overwrite mode
+            ClassifiedTransaction.objects.filter(transaction=transaction).delete()
+
         total_split_amount = 0
         for entry in data:
             try:
@@ -67,8 +108,6 @@ class ClassifiedTransactionViewSet(viewsets.ModelViewSet):
                 {"error": f"Split amount ({total_split_amount}) must equal the transaction amount ({transaction.amount})."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        ClassifiedTransaction.objects.filter(transaction=transaction).delete()
 
         serializer = self.get_serializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
@@ -153,9 +192,7 @@ def bulk_upload_transactions(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# ✅ Spend by Cost Centre API
 @api_view(["GET"])
-
 def spend_by_cost_centre(request):
     start = request.query_params.get("start")
     end = request.query_params.get("end")
@@ -171,7 +208,7 @@ def spend_by_cost_centre(request):
         .filter(**filters)
         .values("cost_centre__name")
         .annotate(
-            total_spent=Coalesce(Sum("amount"), 0, output_field=DecimalField())  # ✅ FIXED HERE
+            total_spent=Coalesce(Sum("amount"), 0, output_field=DecimalField())
         )
         .order_by("-total_spent")
     )
@@ -181,3 +218,4 @@ def spend_by_cost_centre(request):
     ]
 
     return Response(result)
+

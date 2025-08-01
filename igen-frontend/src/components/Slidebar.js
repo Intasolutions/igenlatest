@@ -5,12 +5,11 @@ import {
 import {
   Dashboard, People, Business, AccountBalance, Category,
   ReceiptLong, Logout, Assignment, Apartment, BusinessCenter,
-  Receipt, Inventory, Contacts, Store, Gavel,
-} from '@mui/icons-material';
+  Receipt, Inventory, Contacts, Store, Gavel, Assessment,
+} from '@mui/icons-material'; // ✅ Added Assessment icon
 import { useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 
-// All menu items
 const allMenuItems = [
   { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', roles: ['SUPER_USER', 'CENTER_HEAD', 'ACCOUNTANT'] },
   { text: 'Users', icon: <People />, path: '/users', roles: ['SUPER_USER'] },
@@ -22,13 +21,13 @@ const allMenuItems = [
   { text: 'Projects', icon: <Assignment />, path: '/projects', roles: ['SUPER_USER', 'CENTER_HEAD'] },
   { text: 'Properties', icon: <Apartment />, path: '/properties', roles: ['SUPER_USER', 'CENTER_HEAD', 'PROPERTY_MANAGER'] },
   { text: 'Entities', icon: <BusinessCenter />, path: '/entities', roles: ['SUPER_USER'] },
-  { text: 'Receipts', icon: <Receipt />, path: '/receipts', roles: ['SUPER_USER', 'ACCOUNTANT'] },
+  // { text: 'Receipts', icon: <Receipt />, path: '/receipts', roles: ['SUPER_USER', 'ACCOUNTANT'] },
   { text: 'Assets', icon: <Inventory />, path: '/assets', roles: ['SUPER_USER', 'CENTER_HEAD', 'PROPERTY_MANAGER'] },
   { text: 'Contacts', icon: <Contacts />, path: '/contacts', roles: ['SUPER_USER', 'CENTER_HEAD'] },
   { text: 'Vendors', icon: <Store />, path: '/vendors', roles: ['SUPER_USER', 'PROPERTY_MANAGER'] },
-
-  // ✅ Added Contract Management module
   { text: 'Contracts', icon: <Gavel />, path: '/contracts', roles: ['SUPER_USER', 'ACCOUNTANT', 'PROPERTY_MANAGER'] },
+  { text: 'Cash Ledger', icon: <Receipt />, path: '/cash-ledger', roles: ['SUPER_USER', 'ACCOUNTANT'] },
+  { text: 'Entity Report', icon: <Assessment />, path: '/entity-report', roles: ['SUPER_USER', 'CENTER_HEAD', 'ACCOUNTANT'] }, // ✅ NEW
 ];
 
 export default function Sidebar() {
@@ -71,10 +70,15 @@ export default function Sidebar() {
           backgroundColor: '#1F2937',
           color: '#FFFFFF',
           paddingRight: '18px',
+          overflowY: 'auto',
           overflowX: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           transition: 'none',
+          scrollbarWidth: 'none',
+          '&::-webkit-scrollbar': {
+            display: 'none',
+          },
         },
       }}
       PaperProps={{ ref: drawerRef }}
